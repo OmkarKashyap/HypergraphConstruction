@@ -1,0 +1,7 @@
+torch
+numpy
+nltk
+transformers
+scikit-learn
+hypernetx
+igraph

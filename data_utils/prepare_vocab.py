@@ -1,13 +1,10 @@
-"""
-Prepare vocabulary and initial word vectors.
-"""
-import json
-import tqdm
-import pickle
-import argparse
+import torch 
 import numpy as np
+import argparse
+import json
+import os
 from collections import Counter
-
+import pickle 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Prepare vocab for relation extraction.')
@@ -16,7 +13,6 @@ def parse_args():
     parser.add_argument('--lower', default=True, help='If specified, lowercase all words.')
     args = parser.parse_args()
     return args
-    
     
 class VocabHelp(object):
     def __init__(self, counter, specials=['<pad>', '<unk>']):
@@ -65,7 +61,50 @@ class VocabHelp(object):
         with open(vocab_path, "wb") as f:
             pickle.dump(self, f)
 
-
+class AmitVocab:
+    def __init__(self, vocab_file, content_file, vocab_size=1000):
+        
+        self.vocab_file = vocab_file
+        self.content_file=content_file
+        self.vocab_size=vocab_size
+        
+        self.word2id= {'[PADDING]': 0, '[START]': 1, '[END]': 2, '[OOV]': 3, '[MASK]': 4}
+        self.id2word= ['[PADDING]', '[START]', '[END]', '[OOV]', '[MASK]']
+        self.word_count= {'[PADDING]': 1, '[START]': 1, '[END]': 1, '[OOV]': 1, '[MASK]': 1}
+        
+        if not os.path.exists(self.vocab_file):
+            self.build_vocab(content_file, vocab_file)
+            
+        self.load_vocab(vocab_file, vocab_size)
+        self.vocab_size = len(self.word2id)
+        
+        
+    
+    @staticmethod
+    def build_vocab(self):
+        pass
+    
+    def token2idx(self):
+        pass
+    
+    def idx2token(self):
+        pass
+    
+    def add_special_tokens(self):
+        pass
+    
+    def get_special_token_indices(self):
+        pass
+    
+    def save_vocab(self):
+        pass
+    
+    def load_vocab(self):
+        with open(self.vocab_file, 'r') as f:
+            vocab_data = json.load(f)
+            tokens = vocab_data['tokens']
+            
+    
 def main():
     args = parse_args()
     
@@ -137,3 +176,4 @@ def load_tokens(filename):
 
 if __name__ == '__main__':
     main()
+        

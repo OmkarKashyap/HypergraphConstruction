@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 import utils.optims as Optim 
 import utils.criterion as Criterion 
 import utils.lr_scheduler as L
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from data_utils.prepare_vocab import VocabHelp
 from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build_tokenizer
@@ -42,8 +43,8 @@ def main():
             'test': './HypergraphConstruction/dataset/Restaurants_corenlp/test.json',
         },
         'laptop': {
-            'train': './HypergraphConstruction/dataset/Laptops_corenlp/train.json',
-            'test': './HypergraphConstruction/dataset/Laptops_corenlp/test.json'
+            'train': '../HypergraphConstruction/dataset/Laptops_corenlp/train.json',
+            'test': '../HypergraphConstruction/dataset/Laptops_corenlp/test.json'
         },
         'twitter': {
             'train': './HypergraphConstruction/dataset/Tweets_corenlp/train.json',
@@ -54,14 +55,14 @@ def main():
     # all variables
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--device', type='str', default='cuda', 
+    parser.add_argument('--device', type=str, default='cuda', 
                         help ='Choose cuda is GPU present else cpu')
     
-    parser.add_argument('--optimizer', type=str, default='adam', choices=optim.Optimizer.keys(),
-                        help = 'Choose the optimizer: ' + ' | '.join(optim.Optimizers.keys()))
+    parser.add_argument('--optimizer', type=str, default='adam',)
+                        # help = 'Choose the optimizer: ' + ' | '.join(optim.Optimizer.keys()))
     
-    parser.add_argument('--criterion', type=str, default='BCELoss', choices=optim.Criteria.keys(),
-                        help = 'Choose the optimizer: ' + ' | '.join(optim.Criteria.keys()))
+    parser.add_argument('--criterion', type=str, default='BCELoss',)
+                        # help = 'Choose the optimizer: ' + ' | '.join(optim.Criterion.keys()))
     
     parser.add_argument('--seed', type=int, default='1234', 
                         help='Set the Random Seed')
@@ -74,10 +75,11 @@ def main():
     
     parser.add_argument('--dataset', default='laptop', type=str, help=', '.join(dataset_files.keys()))
     parser.add_argument('--max_length', default=85, type=int)
-    parser.add_argument('--vocab_dir', type=str, default='./HypergraphConstruction/dataset/Laptops_corenlp')
+    parser.add_argument('--vocab_dir', type=str, default='dataset/Laptops_corenlp')
     parser.add_argument('--embed_dim', default=300, type=int)
+    parser.add_argument('--pad_id', default=0, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
     
-    parser.add_argument()
     
     args = parser.parse_args()
     
@@ -97,13 +99,14 @@ def main():
             fnames=[args.dataset_file['train'], args.dataset_file['test']], 
             max_length=args.max_length, 
             data_file='{}/{}_tokenizer.dat'.format(args.vocab_dir, args.dataset))
-    
+    print(tokenizer)
     #embedding matrix
     embedding_matrix = build_embedding_matrix(
             vocab=tokenizer.vocab, 
             embed_dim=args.embed_dim, 
             data_file='{}/{}d_{}_embedding_matrix.dat'.format(args.vocab_dir, str(args.embed_dim), args.dataset))
 
+    print(embedding_matrix)
     logger.info("Loading vocab...")
     
     token_vocab = VocabHelp.load_vocab(args.vocab_dir + '/vocab_tok.vocab')    # token
@@ -111,8 +114,7 @@ def main():
     #train set and test set
     trainset = SentenceDataset(args.dataset_file['train'], tokenizer, opt=args, vocab_help=None)
     testset = SentenceDataset(args.dataset_file['test'], tokenizer, opt=args, vocab_help=None)
-        
-        
+                
     # dataloader
     train_dataloader = DataLoader(dataset=trainset, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(dataset=testset, batch_size=args.batch_size)
@@ -146,10 +148,9 @@ def main():
     criterion = Criterion.criterion[args.criterion]
     
     # optimizer
-    optimizer = Optim.optimizers[args.optimizers]
-    
+    optimizer = Optim.optimizers[args.optimizer](model.parameters(), lr=0.01)
     # lr scheduler
-    scheduler = L.CosineAnnealingLR()
+    scheduler = L.CosineAnnealingLR(optimizer, T_max=50)
     
     # parallel data
     if args.parallel:
@@ -175,7 +176,8 @@ def main():
         #f1 score
         
         #save best model
-        save_model(model, model_path, optimizer, gpus, args)
+        
+        # save_model(model, model_path, optimizer, gpus, args)
         
         # set up logging
         

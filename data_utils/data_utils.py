@@ -180,7 +180,7 @@ class SentenceDataset(Dataset):
         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
             text = tokenizer.text_to_sequence(obj['text'])
             mask = tokenizer.pad_sequence(obj['mask'], pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
-
+    
             adj = np.ones(opt.max_length) * opt.pad_id
             
             data.append({
@@ -230,7 +230,7 @@ def build_embedding_matrix(vocab, embed_dim, data_file):
     else:
         print('loading word vectors...')
         embedding_matrix = np.zeros((len(vocab), embed_dim))
-        fname = './DualGCN/glove/glove.840B.300d.txt'
+        fname = 'glove/glove.840B.300d.txt'
         word_vec = _load_wordvec(fname, embed_dim, vocab)
         for i in range(len(vocab)):
             vec = word_vec.get(vocab.id_to_word(i))

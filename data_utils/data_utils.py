@@ -181,6 +181,7 @@ class SentenceDataset(Dataset):
         data = list()
         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
+            plain_text = obj['text']
             text = tokenizer.text_to_sequence(obj['text'])
             aspect = tokenizer.text_to_sequence(obj['aspect'])  # max_length=10
             post = [post_vocab.stoi.get(t, post_vocab.unk_index) for t in obj['post']]
@@ -204,7 +205,8 @@ class SentenceDataset(Dataset):
                 # 'adj': adj,
                 # 'mask': mask,
                 # 'length': length,
-                'polarity': polarity
+                'polarity': polarity,
+                'plain_text': plain_text,
             })
 
         self._data = data

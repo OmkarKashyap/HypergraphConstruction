@@ -23,6 +23,8 @@ from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build
 
 from models.model import HGSCAN
 
+from models.lda_hypergraph import  TextProcessor,LDATopicModel, SemanticHypergraphModel
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -34,13 +36,15 @@ def custom_collate(batch):
     # adj_batch = [torch.as_tensor(item['adj'], dtype=torch.int64) for item in batch]
     # mask_batch = [torch.as_tensor(item['mask'], dtype=torch.int64) for item in batch]
     polarity_batch = [torch.as_tensor(item['polarity'], dtype=torch.int64) for item in batch]
+    plain_text = [item['plain_text'] for item in batch]
     
     return {
         'text': text_batch,
         # 'aspect':aspect_batch,
         # 'adj': adj_batch,
         # 'mask': mask_batch,
-        'polarity': polarity_batch
+        'polarity': polarity_batch, 
+        'plain_text':plain_text
     }
     
 def save_model(model, path, optimizer, gpus, args,updates=None):
@@ -55,8 +59,8 @@ def save_model(model, path, optimizer, gpus, args,updates=None):
 # train model
 def train(model, train_dataloader, criterion, optimizer, args, test_dataloader,  embedding_matrix, max_test_acc_overall=0):
     
-    max_f1_score = 0
-    max_text_score = 0
+    max_f1 = 0
+    max_test_acc = 0
     step_counter=0
     
     for epoch in range(args.num_epoch):
@@ -65,18 +69,29 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         n_correct, n_total = 0, 0
         for i_batch, batch in enumerate(train_dataloader):
             step_counter+=1
+                        
             # inputs = [batch[col] for col in 'text']
-            
             seq2feats = Seq2Feats(embedding_matrix,args)
             x = seq2feats.forward(batch)
             
             targets = batch['polarity']
-            # inputs, targets = inputs.to(args.device), targets.to(args.device)
+            targets = torch.tensor([t.item() for t in targets])
             
+            plain_text = batch['plain_text']
+            processor = TextProcessor()
+            preprocessed_texts = processor.preprocess(plain_text)
+
+            lda_model = LDATopicModel(preprocessed_texts)
+            hyperedges = lda_model.get_topics()
+
+            print('hyperedges------', hyperedges)
+            
+            # inputs, targets = inputs.to(args.device), targets.to(args.device)
             model.train()
             optimizer.zero_grad()
+            # outputs = model(x)
             outputs = model(x)
-            
+                       
             loss = criterion(outputs, targets)
             
             loss.backward()
@@ -86,13 +101,13 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
                     n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
                     n_total += len(outputs)
                     train_acc = n_correct / n_total
-                    test_acc, f1 = evaluate(model, test_dataloader, args)
+                    test_acc, f1 = evaluate(model, test_dataloader, args, embedding_matrix)
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
                         if test_acc > max_test_acc_overall:
-                            if not os.path.exists('./HypergraphConstruction/state_dict'):
-                                os.mkdir('./HypergraphConstruction/state_dict')
-                            model_path = './HypergraphConstruction/state_dict/{}_{}_acc_{:.4f}_f1_{:.4f}'.format('atae_lstm', 'laptop', test_acc, f1)
+                            if not os.path.exists('state_dict'):
+                                os.mkdir('state_dict')
+                            model_path = 'state_dict/{}_{}_acc_{:.4f}_f1_{:.4f}'.format('atae_lstm', 'laptop', test_acc, f1)
                             
                             logger.info('>> saved: {}'.format(model))
                     if f1 > max_f1:
@@ -100,18 +115,22 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
                     logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(loss.item(), train_acc, test_acc, f1))
         return max_test_acc, max_f1, model_path
     
-def evaluate(model, test_dataloader, args, show_results=False):
+def evaluate(model, test_dataloader, args, embedding_matrix, show_results=False):
     model.eval()
     
     n_test_correct, n_test_total = 0,0
     targets_all, outputs_all = None, None
     with torch.no_grad():
         for i_batch, batch in enumerate(test_dataloader):
-            inputs = batch['text']
-            outputs = batch['polarity']
-            inputs, targets = inputs.to(args.device), targets.to(args.device)
+            # inputs, targets = inputs.to(args.device), targets.to(args.device)
             
-            outputs = model(inputs)
+            seq2feats = Seq2Feats(embedding_matrix,args)
+            x = seq2feats.forward(batch)
+            
+            targets = batch['polarity']
+            targets = torch.tensor([t.item() for t in targets])
+            
+            outputs = model(x)
             
             n_test_correct += torch.sum(torch.argmax(outputs, -1) == targets).item()
             n_test_total += len(outputs)
@@ -130,10 +149,10 @@ def evaluate(model, test_dataloader, args, show_results=False):
         return report, confusion, test_acc, f1
     return test_acc, f1
 
-def test(self, model):
+def test(model, test_dataloader, args, embedding_matrix):
         
         model.eval()
-        test_report, test_confusion, acc, f1 = evaluate(show_results=True)
+        test_report, test_confusion, acc, f1 = evaluate(model, test_dataloader, args, embedding_matrix, show_results=True)
         logger.info("Precision, Recall and F1-Score...")
         logger.info(test_report)
         logger.info("Confusion Matrix...")
@@ -165,7 +184,7 @@ def main():
     parser.add_argument('--optimizer', type=str, default='adam',)
                         # help = 'Choose the optimizer: ' + ' | '.join(optim.Optimizer.keys()))
     
-    parser.add_argument('--criterion', type=str, default='BCELoss',)
+    parser.add_argument('--criterion', type=str, default='CrossEntropyLoss',)
                         # help = 'Choose the optimizer: ' + ' | '.join(optim.Criterion.keys()))
     
     parser.add_argument('--seed', type=int, default='1234', 
@@ -246,14 +265,17 @@ def main():
     vocab_help = (post_vocab, pos_vocab, dep_vocab, pol_vocab)
     #train set and test set
     trainset = SentenceDataset(args.dataset_file['train'], tokenizer, opt=args, vocab_help=vocab_help)
-    testset = SentenceDataset(args.dataset_file['test'], tokenizer, opt=args, vocab_help=vocab_help)  
-          
+    testset = SentenceDataset(args.dataset_file['test'], tokenizer, opt=args, vocab_help=vocab_help) 
+     
     # dataloader
     train_dataloader = DataLoader(dataset=trainset, batch_size=args.batch_size, shuffle=True, collate_fn=custom_collate)
     test_dataloader = DataLoader(dataset=testset, batch_size=args.batch_size, collate_fn=custom_collate)
     
     # build_model using args and embedding
-    model = HGSCAN()
+    # model = HGSCAN()
+    model = SemanticHypergraphModel(num_topics=10, word_dimension=300, num_classes=3, top_k=5)
+    
+    # model = SemanticHyperedgeModel(input_dim=300, max_len=85, num_classes=3, hyperedges=hyperedges)
     # model = model.to(device)   
     
     
@@ -303,8 +325,8 @@ def main():
         model = torch.nn.DataParallel(model, device_ids=[gpu.index for gpu in gpus])
     
     
-    max_test_acc=0
-    max_f1=0
+    max_test_acc_overall=0
+    max_f1_overall=0
     
     max_test_acc, max_f1, model_path = train( model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix)
     
@@ -317,7 +339,7 @@ def main():
     logger.info('best model saved: {}'.format(model_path))
     logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
     logger.info('max_f1_overall:{}'.format(max_f1_overall))
-    test()
+    test(model, test_dataloader, args, embedding_matrix)
 
 
 if __name__== "__main__":

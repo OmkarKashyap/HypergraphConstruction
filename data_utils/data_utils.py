@@ -169,24 +169,39 @@ class Tokenizer(object):
         #     text = text.replace(ch, " "+ch+" ")
         return text.strip().split()
 
-
 class SentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
     def __init__(self, fname, tokenizer, opt, vocab_help):
 
         parse = ParseData
+        post_vocab, pos_vocab, dep_vocab, pol_vocab = vocab_help
         data = list()
         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
             text = tokenizer.text_to_sequence(obj['text'])
+            aspect = tokenizer.text_to_sequence(obj['aspect'])  # max_length=10
+            post = [post_vocab.stoi.get(t, post_vocab.unk_index) for t in obj['post']]
+            post = tokenizer.pad_sequence(post, pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
+            pos = [pos_vocab.stoi.get(t, pos_vocab.unk_index) for t in obj['pos']]
+            pos = tokenizer.pad_sequence(pos, pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
+            deprel = [dep_vocab.stoi.get(t, dep_vocab.unk_index) for t in obj['deprel']]
+            deprel = tokenizer.pad_sequence(deprel, pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
             mask = tokenizer.pad_sequence(obj['mask'], pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
-    
+
             adj = np.ones(opt.max_length) * opt.pad_id
-            
+    
+            length = obj['length']
+            polarity = polarity_dict[obj['label']]
             data.append({
-                'text': text,
+                'text': text, 
+                'aspect': aspect, 
+                'post': post,
+                'pos': pos,
+                'deprel': deprel,
                 'adj': adj,
                 'mask': mask,
+                'length': length,
+                'polarity': polarity
             })
 
         self._data = data
@@ -196,6 +211,49 @@ class SentenceDataset(Dataset):
     
     def __len__(self):
         return len(self._data)
+
+# class SentenceDataset(Dataset):
+#     ''' PyTorch standard dataset class '''
+#     def __init__(self, fname, tokenizer, opt, vocab_help):
+
+#         parse = ParseData
+#         data = list()
+#         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
+#         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
+#             text = tokenizer.text_to_sequence(obj['text'])
+#             mask = tokenizer.pad_sequence(obj['mask'], pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
+    
+#             adj = np.ones(opt.max_length) * opt.pad_id
+            
+#             polarity = polarity_dict[obj['label']]
+            
+#             data.append({
+#                 'text': text,
+#                 'adj': adj,
+#                 'mask': mask,
+#                 'polarity': polarity
+#             })
+
+#         self._data = data
+
+#     def __getitem__(self, index):
+#         item = self._data[index]
+        
+#         # Assuming these are numpy arrays or you need to convert them
+#         text_np = np.array(item['text'], dtype=np.int64)
+#         adj_np = np.array(item['adj'], dtype=np.int64)
+#         mask_np = np.array(item['mask'], dtype=np.int64)
+#         polarity_np = np.array(item['polarity'], dtype=np.int64)
+        
+#         return {
+#             'text': text_np,
+#             'adj': adj_np,
+#             'mask': mask_np,
+#             'polarity': polarity_np
+#         }
+    
+#     def __len__(self):
+#         return len(self._data)
 
 def _load_wordvec(data_path, embed_dim, vocab=None):
     with open(data_path, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:

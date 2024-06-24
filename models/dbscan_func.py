@@ -11,7 +11,6 @@ from sklearn.cluster import DBSCAN
 from transformers import BertTokenizer, BertModel
 import torch
 import numpy as np
-import hypernetx as hnx
 import nltk
 from nltk.corpus import stopwords
 
@@ -109,6 +108,5 @@ similarity_matrix = form_similarity_matrix(result_clusters, model)
 # print(similarity_matrix)
 
 
-H = hnx.Hypergraph(hyperedges, name='WordSimilarityGraph')
-hnx.draw(H)
+
 

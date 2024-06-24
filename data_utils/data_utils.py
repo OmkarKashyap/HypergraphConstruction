@@ -15,6 +15,9 @@ from tqdm import tqdm
 from transformers import BertTokenizer
 from torch.utils.data import Dataset
 
+import torch
+import torch.nn as nn 
+
 
 def ParseData(data_path):
     with open(data_path) as infile:
@@ -31,7 +34,7 @@ def ParseData(data_path):
                 asp = list(aspect['term'])   # aspect
                 asp = [a.lower() for a in asp]
                 asp = ' '.join(asp)
-                label = aspect['polarity']   # label
+                label = aspect['polarity']   # label                
                 pos = list(d['pos'])         # pos_tag 
                 head = list(d['head'])       # head
                 deprel = list(d['deprel'])   # deprel
@@ -194,13 +197,13 @@ class SentenceDataset(Dataset):
             polarity = polarity_dict[obj['label']]
             data.append({
                 'text': text, 
-                'aspect': aspect, 
-                'post': post,
-                'pos': pos,
-                'deprel': deprel,
-                'adj': adj,
-                'mask': mask,
-                'length': length,
+                # 'aspect': aspect, 
+                # 'post': post,
+                # 'pos': pos,
+                # 'deprel': deprel,
+                # 'adj': adj,
+                # 'mask': mask,
+                # 'length': length,
                 'polarity': polarity
             })
 
@@ -212,48 +215,6 @@ class SentenceDataset(Dataset):
     def __len__(self):
         return len(self._data)
 
-# class SentenceDataset(Dataset):
-#     ''' PyTorch standard dataset class '''
-#     def __init__(self, fname, tokenizer, opt, vocab_help):
-
-#         parse = ParseData
-#         data = list()
-#         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
-#         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
-#             text = tokenizer.text_to_sequence(obj['text'])
-#             mask = tokenizer.pad_sequence(obj['mask'], pad_id=opt.pad_id, maxlen=opt.max_length, dtype='int64', padding='post', truncating='post')
-    
-#             adj = np.ones(opt.max_length) * opt.pad_id
-            
-#             polarity = polarity_dict[obj['label']]
-            
-#             data.append({
-#                 'text': text,
-#                 'adj': adj,
-#                 'mask': mask,
-#                 'polarity': polarity
-#             })
-
-#         self._data = data
-
-#     def __getitem__(self, index):
-#         item = self._data[index]
-        
-#         # Assuming these are numpy arrays or you need to convert them
-#         text_np = np.array(item['text'], dtype=np.int64)
-#         adj_np = np.array(item['adj'], dtype=np.int64)
-#         mask_np = np.array(item['mask'], dtype=np.int64)
-#         polarity_np = np.array(item['polarity'], dtype=np.int64)
-        
-#         return {
-#             'text': text_np,
-#             'adj': adj_np,
-#             'mask': mask_np,
-#             'polarity': polarity_np
-#         }
-    
-#     def __len__(self):
-#         return len(self._data)
 
 def _load_wordvec(data_path, embed_dim, vocab=None):
     with open(data_path, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
@@ -429,3 +390,60 @@ class ABSAGCNData(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx]
+    
+    
+class SqueezeEmbedding(nn.Module):
+    '''
+    Squeeze sequence embedding length to the longest one in the batch
+    '''
+    def __init__(self, batch_first=True):
+        super(SqueezeEmbedding, self).__init__()
+        self.batch_first = batch_first
+    
+    def forward(self, x, x_len):
+        '''
+        sequence -> sort -> pad and pack -> unpack -> unsort
+        '''
+        '''sort'''
+        x_sort_idx = torch.sort(x_len, descending=True)[1].long()
+        x_unsort_idx = torch.sort(x_sort_idx)[1].long()
+        x_len = x_len[x_sort_idx]
+        x = x[x_sort_idx]
+        '''pack'''
+        x_emb_p = torch.nn.utils.rnn.pack_padded_sequence(x, x_len, batch_first=self.batch_first)
+        '''unpack'''
+        out, _ = torch.nn.utils.rnn.pad_packed_sequence(x_emb_p, batch_first=self.batch_first)
+        if self.batch_first:
+            out = out[x_unsort_idx]
+        else:
+            out = out[:, x_unsort_idx]
+        return out
+        
+
+class Seq2Feats(nn.Module):
+    def __init__(self, embedding_matrix, args):
+        super(Seq2Feats, self).__init__()
+        
+        # Convert embedding_matrix to tensor (avoiding the warning)
+        self.embed = nn.Embedding.from_pretrained(torch.tensor(embedding_matrix, dtype=torch.float).clone().detach(), freeze=True)
+        # self.squeeze_embedding = SqueezeEmbedding()  # Assuming this is a custom class for squeezing embeddings
+    
+    def forward(self, inputs):
+        # Assuming inputs is a tensor of shape [batch_size, seq_length]
+        text = inputs['text'] #[16,85]
+        text = torch.stack(text)
+                  
+        x = self.embed(text)
+        # sentence = text[1]
+        
+        # embed_sentence = self.embed(sentence)  # embed text: [batch_size, seq_length, embedding_dim]
+        # # print(embed_sentence.shape)
+        # x = torch.cat((text, embed_sentence[1].unsqueeze(0)), dim=0)
+        return x
+        
+    
+    def remove_trailing_zeros(self, tensor):
+            last_non_zero_idx = (tensor != 0).nonzero(as_tuple=False).max()
+            return len(tensor[:last_non_zero_idx + 1])
+        
+    

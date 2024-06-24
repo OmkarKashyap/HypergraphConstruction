@@ -19,67 +19,27 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from sklearn import metrics
 
 from data_utils.prepare_vocab import VocabHelp
-from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build_tokenizer
-from layers import DynamicLSTM, SqueezeEmbedding, SoftAttention
+from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build_tokenizer, Seq2Feats
 
+from models.model import HGSCAN
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-class ATAE_LSTM(nn.Module):
-    ''' Attention-based LSTM with Aspect Embedding '''
-    def __init__(self, embedding_matrix, opt):
-        super(ATAE_LSTM, self).__init__()
-        self.embed = nn.Embedding.from_pretrained(torch.tensor(embedding_matrix, dtype=torch.float), freeze=True)
-        self.squeeze_embedding = SqueezeEmbedding()
-        self.lstm = DynamicLSTM(50*2, 50, num_layers=1, batch_first=True)
-        self.attention = SoftAttention(50, 300)
-        self.dense = nn.Linear(50, 3)
-    
-    def forward(self, inputs):
-        text, aspect_text = inputs[0],inputs[1]
-        # text = torch.stack(inputs[0])
-        # aspect_text = torch.stack(aspect_text[0], dim=0)
-        # x_len = torch.sum(text != 0, dim=-1)
-        def remove_trailing_zeros(tensor):
-            last_non_zero_idx = (tensor != 0).nonzero(as_tuple=False).max()
-            return len(tensor[:last_non_zero_idx + 1])
-        x_len = torch.tensor([remove_trailing_zeros(tensor) for tensor in text])
-        x_len_max = torch.max(x_len)
-        aspect_len = torch.tensor([remove_trailing_zeros(tensor) for tensor in aspect_text])
-        
-        text = torch.cat(text, dim=0)
-        aspect_text = torch.cat(aspect_text, dim=0)
-        
-        x = self.embed(text)
-        print(x.shape)
-        x = self.squeeze_embedding(x, x_len)
-        aspect = self.embed(aspect_text)
-        print(x.shape)
-        
-        aspect_pool = torch.div(torch.sum(aspect, dim=1), aspect_len.view(aspect_len.size(0), 1))
-        aspect = torch.unsqueeze(aspect_pool, dim=1).expand(-1, x_len_max, -1)
-        print(aspect.shape)
-        x = torch.cat((aspect, x), dim=-1)
-        h, _ = self.lstm(x, x_len)
-        hs = self.attention(h, aspect)
-        out = self.dense(hs)
-        return out, None
-    
+
 def custom_collate(batch):
     text_batch = [torch.as_tensor(item['text'], dtype=torch.int64) for item in batch]
-    aspect_batch = [torch.as_tensor(item['aspect'], dtype=torch.int64) for item in batch]
-    adj_batch = [torch.as_tensor(item['adj'], dtype=torch.int64) for item in batch]
-    mask_batch = [torch.as_tensor(item['mask'], dtype=torch.int64) for item in batch]
+    # aspect_batch = [torch.as_tensor(item['aspect'], dtype=torch.int64) for item in batch]
+    # adj_batch = [torch.as_tensor(item['adj'], dtype=torch.int64) for item in batch]
+    # mask_batch = [torch.as_tensor(item['mask'], dtype=torch.int64) for item in batch]
     polarity_batch = [torch.as_tensor(item['polarity'], dtype=torch.int64) for item in batch]
-    
     
     return {
         'text': text_batch,
-        'aspect':aspect_batch,
-        'adj': adj_batch,
-        'mask': mask_batch,
+        # 'aspect':aspect_batch,
+        # 'adj': adj_batch,
+        # 'mask': mask_batch,
         'polarity': polarity_batch
     }
     
@@ -93,7 +53,7 @@ def save_model(model, path, optimizer, gpus, args,updates=None):
         torch.save(checkpoints, path)
 
 # train model
-def train(model, train_dataloader, criterion, optimizer, args, test_dataloader,  max_test_acc_overall=0):
+def train(model, train_dataloader, criterion, optimizer, args, test_dataloader,  embedding_matrix, max_test_acc_overall=0):
     
     max_f1_score = 0
     max_text_score = 0
@@ -105,14 +65,17 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         n_correct, n_total = 0, 0
         for i_batch, batch in enumerate(train_dataloader):
             step_counter+=1
-            inputs = [batch[col] for col in ['text', 'aspect']]
+            # inputs = [batch[col] for col in 'text']
+            
+            seq2feats = Seq2Feats(embedding_matrix,args)
+            x = seq2feats.forward(batch)
+            
             targets = batch['polarity']
             # inputs, targets = inputs.to(args.device), targets.to(args.device)
             
             model.train()
             optimizer.zero_grad()
-            
-            outputs, penal = model(inputs)
+            outputs = model(x)
             
             loss = criterion(outputs, targets)
             
@@ -226,6 +189,19 @@ def main():
     parser.add_argument('--learning_rate', default=0.001, type=float)
     
     
+    parser.add_argument('--n_layers', default=2)
+    parser.add_argument('--dropout_rate', default=0.5)
+    parser.add_argument('--eps', default=0.01)
+    parser.add_argument('--min_samples', default=3)
+    parser.add_argument('--output_size', default=10)
+    parser.add_argument('--dim_in', default=300)
+    parser.add_argument('--hidden_num', default=5)
+    parser.add_argument('--ft_dim', default=300)
+    parser.add_argument('--n_categories', default=3)
+    parser.add_argument('--has_bias', type=str, default=True)
+    
+    
+    
     args = parser.parse_args()
     
     args.dataset_file = dataset_files[args.dataset]
@@ -244,7 +220,7 @@ def main():
             fnames=[args.dataset_file['train'], args.dataset_file['test']], 
             max_length=args.max_length, 
             data_file='{}/{}_tokenizer.dat'.format(args.vocab_dir, args.dataset))
-    print(tokenizer)
+    
     #embedding matrix
     embedding_matrix = build_embedding_matrix(
             vocab=tokenizer.vocab, 
@@ -252,6 +228,7 @@ def main():
             data_file='{}/{}d_{}_embedding_matrix.dat'.format(args.vocab_dir, str(args.embed_dim), args.dataset))
 
     embedding_matrix = torch.tensor(embedding_matrix)
+    
     logger.info("Loading vocab...")
     
     token_vocab = VocabHelp.load_vocab(args.vocab_dir + '/vocab_tok.vocab')   
@@ -269,14 +246,15 @@ def main():
     vocab_help = (post_vocab, pos_vocab, dep_vocab, pol_vocab)
     #train set and test set
     trainset = SentenceDataset(args.dataset_file['train'], tokenizer, opt=args, vocab_help=vocab_help)
-    testset = SentenceDataset(args.dataset_file['test'], tokenizer, opt=args, vocab_help=vocab_help)        
+    testset = SentenceDataset(args.dataset_file['test'], tokenizer, opt=args, vocab_help=vocab_help)  
+          
     # dataloader
     train_dataloader = DataLoader(dataset=trainset, batch_size=args.batch_size, shuffle=True, collate_fn=custom_collate)
     test_dataloader = DataLoader(dataset=testset, batch_size=args.batch_size, collate_fn=custom_collate)
     
     # build_model using args and embedding
-    model = ATAE_LSTM(embedding_matrix, args)
-    model = model.to(device)   
+    model = HGSCAN()
+    # model = model.to(device)   
     
     
     # number of gpus
@@ -328,7 +306,7 @@ def main():
     max_test_acc=0
     max_f1=0
     
-    max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader)
+    max_test_acc, max_f1, model_path = train( model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix)
     
     logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
     
@@ -340,11 +318,6 @@ def main():
     logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
     logger.info('max_f1_overall:{}'.format(max_f1_overall))
     test()
-
-    
-    
-    
-    
 
 
 if __name__== "__main__":

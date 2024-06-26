@@ -23,7 +23,7 @@ from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build
 
 from models.model import HGSCAN
 
-from models.lda_hypergraph import  TextProcessor,LDATopicModel, SemanticHypergraphModel
+# from models.lda_hypergraph import  TextProcessor,LDATopicModel, SemanticHypergraphModel
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -77,14 +77,14 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
             targets = batch['polarity']
             targets = torch.tensor([t.item() for t in targets])
             
-            plain_text = batch['plain_text']
-            processor = TextProcessor()
-            preprocessed_texts = processor.preprocess(plain_text)
+            # plain_text = batch['plain_text']
+            # processor = TextProcessor()
+            # preprocessed_texts = processor.preprocess(plain_text)
 
-            lda_model = LDATopicModel(preprocessed_texts)
-            hyperedges = lda_model.get_topics()
+            # lda_model = LDATopicModel(preprocessed_texts)
+            # hyperedges = lda_model.get_topics()
 
-            print('hyperedges------', hyperedges)
+            # print('hyperedges------', hyperedges)
             
             # inputs, targets = inputs.to(args.device), targets.to(args.device)
             model.train()
@@ -201,14 +201,14 @@ def main():
     parser.add_argument('--vocab_dir', type=str, default='dataset/Laptops_corenlp')
     parser.add_argument('--embed_dim', default=300, type=int)
     parser.add_argument('--pad_id', default=0, type=int)
-    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     
-    parser.add_argument('--num_epoch', default=20, type=int)
+    parser.add_argument('--num_epoch', default=1, type=int)
     parser.add_argument('--log_step', default=5, type=int, help='Logs state after set number of epochs')
     parser.add_argument('--learning_rate', default=0.001, type=float)
     
     
-    parser.add_argument('--n_layers', default=2)
+    parser.add_argument('--n_layers', default=1)
     parser.add_argument('--dropout_rate', default=0.5)
     parser.add_argument('--eps', default=0.01)
     parser.add_argument('--min_samples', default=3)
@@ -272,8 +272,8 @@ def main():
     test_dataloader = DataLoader(dataset=testset, batch_size=args.batch_size, collate_fn=custom_collate)
     
     # build_model using args and embedding
-    # model = HGSCAN()
-    model = SemanticHypergraphModel(num_topics=10, word_dimension=300, num_classes=3, top_k=5)
+    model = HGSCAN()
+    # model = SemanticHypergraphModel(num_topics=10, word_dimension=300, num_classes=3, top_k=5)
     
     # model = SemanticHyperedgeModel(input_dim=300, max_len=85, num_classes=3, hyperedges=hyperedges)
     # model = model.to(device)   

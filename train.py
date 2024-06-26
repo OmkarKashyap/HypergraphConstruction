@@ -23,7 +23,7 @@ from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build
 
 from models.model import HGSCAN
 
-# from models.lda_hypergraph import  TextProcessor,LDATopicModel, SemanticHypergraphModel
+from models.lda_hypergraph import  SemanticHypergraphModel
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -77,19 +77,10 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
             targets = batch['polarity']
             targets = torch.tensor([t.item() for t in targets])
             
-            # plain_text = batch['plain_text']
-            # processor = TextProcessor()
-            # preprocessed_texts = processor.preprocess(plain_text)
-
-            # lda_model = LDATopicModel(preprocessed_texts)
-            # hyperedges = lda_model.get_topics()
-
-            # print('hyperedges------', hyperedges)
-            
             # inputs, targets = inputs.to(args.device), targets.to(args.device)
             model.train()
             optimizer.zero_grad()
-            # outputs = model(x)
+            
             outputs = model(x)
                        
             loss = criterion(outputs, targets)
@@ -113,7 +104,7 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
                     if f1 > max_f1:
                         max_f1 = f1
                     logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(loss.item(), train_acc, test_acc, f1))
-        return max_test_acc, max_f1, model_path
+    return max_test_acc, max_f1, model_path
     
 def evaluate(model, test_dataloader, args, embedding_matrix, show_results=False):
     model.eval()
@@ -201,14 +192,14 @@ def main():
     parser.add_argument('--vocab_dir', type=str, default='dataset/Laptops_corenlp')
     parser.add_argument('--embed_dim', default=300, type=int)
     parser.add_argument('--pad_id', default=0, type=int)
-    parser.add_argument('--batch_size', default=1, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
     
-    parser.add_argument('--num_epoch', default=1, type=int)
+    parser.add_argument('--num_epoch', default=10, type=int)
     parser.add_argument('--log_step', default=5, type=int, help='Logs state after set number of epochs')
     parser.add_argument('--learning_rate', default=0.001, type=float)
     
     
-    parser.add_argument('--n_layers', default=1)
+    parser.add_argument('--n_layers', default=3)
     parser.add_argument('--dropout_rate', default=0.5)
     parser.add_argument('--eps', default=0.01)
     parser.add_argument('--min_samples', default=3)
@@ -218,6 +209,10 @@ def main():
     parser.add_argument('--ft_dim', default=300)
     parser.add_argument('--n_categories', default=3)
     parser.add_argument('--has_bias', type=str, default=True)
+    
+    parser.add_argument('--num_topics', default=10)
+    parser.add_argument('--top_k', default=5)
+    
     
     
     
@@ -272,10 +267,8 @@ def main():
     test_dataloader = DataLoader(dataset=testset, batch_size=args.batch_size, collate_fn=custom_collate)
     
     # build_model using args and embedding
-    model = HGSCAN()
-    # model = SemanticHypergraphModel(num_topics=10, word_dimension=300, num_classes=3, top_k=5)
-    
-    # model = SemanticHyperedgeModel(input_dim=300, max_len=85, num_classes=3, hyperedges=hyperedges)
+    model = HGSCAN(args)
+    # model = SemanticHypergraphModel(args)
     # model = model.to(device)   
     
     
@@ -304,6 +297,7 @@ def main():
     
     # optimizer
     optimizer = Optim.optimizers[args.optimizer](model.parameters(),args.learning_rate)
+    optimizer.zero_grad()
     # lr scheduler
     scheduler = L.CosineAnnealingLR(optimizer, T_max=50)
     

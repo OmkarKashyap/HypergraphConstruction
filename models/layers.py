@@ -505,38 +505,39 @@ class HypergraphEdgeAggregation(nn.Module):
 
 
 class MessagePassing(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, args) -> None:
         super().__init__()
-        self.eps = 0.03
-        self.min_samples = 4
-        self.output_size = 10
-        self.dim_in = 300
-        self.hidden_num = 5
-        self.num_layers = 3
+        self.eps = args.eps
+        self.min_samples = args.min_samples
+        self.output_size = args.output_size
+        self.dim_in = args.dim_in
+        self.hidden_num = args.hidden_num
+        self.num_layers = args.n_layers
         self.vc = VertexConv(self.dim_in, self.dim_in)
         self.construct = HGConstruct(eps=self.eps, min_samples = self.min_samples, output_size=self.output_size)
         self.ec = EdgeConv(self.dim_in, self.dim_in)
     
     def forward(self, features):
+        print("in pass")
         features = features.squeeze(0)
         inc_mat = self.construct.cluster(features)
         edge_feats = self.vc(features, inc_mat)
         node_feats = self.ec(inc_mat, edge_feats, features)
         for _ in range(1, self.num_layers):
-            print("in pass")
+            
             edge_feats = self.vc(features, inc_mat, edge_feats)
             node_feats = self.ec(inc_mat, edge_feats, node_feats)
         
         return node_feats, edge_feats, inc_mat
 
 class HGConv(nn.Module):
-    def  __init__(self) -> None:
+    def  __init__(self, args) -> None:
         super(). __init__()
 
-        self.dim_in = 300
-        self.n_categories = 3  # Number of output categories
+        self.dim_in = args.dim_in
+        self.n_categories = args.n_categories  # Number of output categories
         self.has_bias = True  # Whether to use bias in the fc layer
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(args.dropout_rate)
         self.vc = VertexConv(self.dim_in, self.dim_in)
         self.ec = HypergraphEdgeAggregation(self.dim_in, self.dim_in)
         self.fc = nn.Linear(self.dim_in, self.n_categories, bias=self.has_bias)
@@ -552,10 +553,10 @@ class HGConv(nn.Module):
         return logits
     
 class HGScanLayer(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, args) -> None:
         super().__init__()
-        self.msg_pass = MessagePassing()
-        self.conv = HGConv()
+        self.msg_pass = MessagePassing(args)
+        self.conv = HGConv(args)
     
     def forward(self, features):
         node_feats, edge_feats, inc_mat = self.msg_pass(features)

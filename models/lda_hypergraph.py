@@ -8,50 +8,16 @@ import torch.nn as nn
 
 import torch.nn.functional as F
 
-class TextProcessor:
-    def __init__(self):
-        nltk.download('punkt')
-        nltk.download('stopwords')
-        nltk.download('wordnet')
-        self.stop_words = set(stopwords.words('english'))
-        self.lemmatizer = WordNetLemmatizer()
-        
-    def preprocess(self, texts):
-        processed_texts = []
-        for text in texts:
-            tokens = word_tokenize(text.lower())
-            filtered_tokens = [self.lemmatizer.lemmatize(token) for token in tokens if token.isalnum() and token not in self.stop_words]
-            processed_texts.append(filtered_tokens)
-        return processed_texts
-
-class LDATopicModel(torch.nn.Module):
-    def __init__(self, texts, num_topics=5, num_words=5):
-        super(LDATopicModel, self).__init__()
-        self.texts = texts
-        self.num_topics = num_topics
-        self.num_words = num_words
-        self.dictionary = corpora.Dictionary(texts)
-        self.corpus = [self.dictionary.doc2bow(text) for text in texts]
-        self.lda_model = models.LdaModel(self.corpus, num_topics=num_topics, id2word=self.dictionary, passes=20)
-        
-    def get_topics(self):
-        topics = self.lda_model.print_topics(num_topics=self.num_topics, num_words=self.num_words)
-        hyperedges = []
-        for topic in topics:
-            words = [word for word, _ in self.lda_model.show_topic(topic[0])]
-            hyperedges.append(words)
-        return hyperedges
-
 
 class SemanticHypergraphModel(nn.Module):
-    def __init__(self, num_topics, word_dimension, num_classes, top_k):
+    def __init__(self, args):
         super(SemanticHypergraphModel, self).__init__()
-        self.num_topics = num_topics
-        self.word_dimension = word_dimension
-        self.num_classes = num_classes
-        self.top_k = top_k
-        self.topic_vectors = nn.Parameter(torch.randn(num_topics, word_dimension))
-        self.fc = nn.Linear(num_topics, num_classes)
+        self.num_topics = args.num_topics
+        self.word_dimension = args.dim_in
+        self.num_classes = args.n_categories
+        self.top_k = args.top_k
+        self.topic_vectors = nn.Parameter(torch.randn(self.num_topics, self.word_dimension))
+        self.fc = nn.Linear(self.num_topics, self.num_classes)
         
     def forward(self, inputs):
         # inputs shape: [batch_size, max_len, word_dimension]

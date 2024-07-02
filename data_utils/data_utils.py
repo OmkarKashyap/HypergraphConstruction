@@ -722,44 +722,7 @@ def softmax(x):
         x /= tmp
     return x
 
-
-class Tokenizer4BertGCN:
-    def __init__(self, max_seq_len, pretrained_bert_name):
-        self.max_seq_len = max_seq_len
-        self.tokenizer = BertTokenizer.from_pretrained(pretrained_bert_name)
-        self.cls_token_id = self.tokenizer.cls_token_id
-        self.sep_token_id = self.tokenizer.sep_token_id
-    def tokenize(self, s):
-        return self.tokenizer.tokenize(s)
-    def convert_tokens_to_ids(self, tokens):
-        return self.tokenizer.convert_tokens_to_ids(tokens)
     
-class SqueezeEmbedding(nn.Module):
-    '''
-    Squeeze sequence embedding length to the longest one in the batch
-    '''
-    def __init__(self, batch_first=True):
-        super(SqueezeEmbedding, self).__init__()
-        self.batch_first = batch_first
-    
-    def forward(self, x, x_len):
-        '''
-        sequence -> sort -> pad and pack -> unpack -> unsort
-        '''
-        '''sort'''
-        x_sort_idx = torch.sort(x_len, descending=True)[1].long()
-        x_unsort_idx = torch.sort(x_sort_idx)[1].long()
-        x_len = x_len[x_sort_idx]
-        x = x[x_sort_idx]
-        '''pack'''
-        x_emb_p = torch.nn.utils.rnn.pack_padded_sequence(x, x_len, batch_first=self.batch_first)
-        '''unpack'''
-        out, _ = torch.nn.utils.rnn.pad_packed_sequence(x_emb_p, batch_first=self.batch_first)
-        if self.batch_first:
-            out = out[x_unsort_idx]
-        else:
-            out = out[:, x_unsort_idx]
-        return out
         
 # class Seq2Feats(nn.Module):
 #     def __init__(self, embedding_matrix, args):
@@ -779,7 +742,7 @@ class SqueezeEmbedding(nn.Module):
 #         mask = torch.stack(word_mask)
         
 #         # Mask text to remove padding as -1 (assuming mask is already 0/1)
-#         text_masked = text * mask.unsqueeze(-1)  # Ensure mask is of type long
+#         text_masked = text * mask  # Ensure mask is of type long
         
 #         # Apply embedding based on masked text
 #         x = self.embedding(text_masked)  # Shape [batch_size, max_length, embedding_dim]
@@ -793,7 +756,7 @@ class SqueezeEmbedding(nn.Module):
 class Seq2Feats(nn.Module):
     def __init__(self, embedding_matrix, args):
         super(Seq2Feats, self).__init__()
-        
+        self.args=args
         # Initialize embedding layer from pre-trained matrix
         self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
         self.embedding = nn.Embedding.from_pretrained(self.embedding_matrix, freeze=True, padding_idx=args.pad_id)
@@ -804,11 +767,11 @@ class Seq2Feats(nn.Module):
         word_mask = inputs['word_mask']  # Tensor of shape [batch_size, max_length], with 0s indicating padding
         
         # Stack tensors in the list
-        text = torch.stack(text_list).to(device=self.embedding_matrix.device)  # Shape [batch_size, max_length]
-        mask = torch.stack(word_mask).to(device=self.embedding_matrix.device)
+        text = torch.stack(text_list).to(device=self.args.device)  # Shape [batch_size, max_length]
+        mask = torch.stack(word_mask).to(device=self.args.device)
         
         # Mask text to remove padding as -1 (assuming mask is already 0/1)
-        text_masked = text * mask.unsqueeze(-1).to(dtype=torch.long)  # Ensure mask is of type long
+        text_masked = text * mask  # Ensure mask is of type long
         
         # Apply embedding based on masked text
         x = self.embedding(text_masked)  # Shape [batch_size, max_length, embedding_dim]

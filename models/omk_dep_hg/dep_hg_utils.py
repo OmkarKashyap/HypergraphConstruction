@@ -129,9 +129,15 @@ class GNNLayer(nn.Module):
     
     def forward(self, feats, adj, word_mask):
         batch_size, max_length, _ = feats.size()
+
+        feats = feats.to(self.args.device)
+        adj = adj.to(self.args.device)
+        word_mask = torch.stack(word_mask).to(self.args.device)
         
-        word_mask = torch.stack(word_mask)
-        
+        # Ensure the linear layers are on the same device
+        self.linear.to(self.args.device)
+        self.linear2.to(self.args.device)
+
         # Apply linear transformation to node features
         feats_transformed = self.linear(feats)
         
@@ -187,9 +193,10 @@ class CommunityDetection(object):
         - List of lists containing community assignments for each node in each graph in the batch.
         - Tensor of padded incidence matrices for each graph in the batch, structured as [batch_size, max_length, max_number of communities].
         """
-        self.embeddings = embeddings
+        self.embeddings = embeddings.to(self.args.device)
+        self.word_mask = [wm.to(self.args.device) for wm in word_mask]
         self.threshold = self.args.louvain_threshold
-        batch_size, num_nodes, embedding_dim = embeddings.size()
+        batch_size, num_nodes, embedding_dim = self.embeddings.size()
         
         communities_batch = []
         incidence_matrices_batch = []
@@ -199,20 +206,20 @@ class CommunityDetection(object):
             tokens = tokens_batch[batch_idx]
     
             # Get non-padding token indices
-            non_padding_indices = torch.nonzero(word_mask[batch_idx]).squeeze()
+            non_padding_indices = torch.nonzero(self.word_mask[batch_idx]).squeeze().to(self.args.device)
             tokens = [tokens[i.item()] for i in non_padding_indices]
             num_tokens = len(tokens)
             
             # Extract embeddings and adjacency matrix for non-padding tokens
-            embeddings_batch = embeddings[batch_idx, non_padding_indices]
+            embeddings_batch = self.embeddings[batch_idx, non_padding_indices]
             
             adj_matrix = torch.mm(embeddings_batch, embeddings_batch.transpose(0, 1))
             
             # Apply thresholding to convert to binary adjacency matrix
-            adj_matrix_binary = (adj_matrix > self.threshold).float()
+            adj_matrix_binary = (adj_matrix > self.threshold).float().to(self.args.device)
             
             # Create padded adjacency matrix
-            padded_adj_matrix = torch.full((self.args.max_length, self.args.max_length), -1.0)
+            padded_adj_matrix = torch.full((self.args.max_length, self.args.max_length), -1.0).to(self.args.device)
             padded_adj_matrix[non_padding_indices[:, None], non_padding_indices] = adj_matrix_binary
             
             # Convert adjacency matrix to networkx graph
@@ -306,10 +313,10 @@ class CommunityDetection(object):
             adj_matrix = torch.mm(embeddings_batch, embeddings_batch.transpose(0, 1))
             
             # Apply thresholding to convert to binary adjacency matrix
-            adj_matrix_binary = (adj_matrix > self.threshold).float()
+            adj_matrix_binary = (adj_matrix > self.threshold).float().to(self.args.device)
             
             # Create padded adjacency matrix
-            padded_adj_matrix = torch.full((self.args.max_length, self.args.max_length), -1.0)
+            padded_adj_matrix = torch.full((self.args.max_length, self.args.max_length), -1.0).to(self.args.device)
             padded_adj_matrix[non_padding_indices[:, None], non_padding_indices] = adj_matrix_binary
             
             # Convert adjacency matrix to networkx graph

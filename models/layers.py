@@ -10,6 +10,7 @@ from models.lda_hypergraph import SemanticHypergraphModel
 class HGConstruct(nn.Module):
     def __init__(self, eps, min_samples, args) -> None:
         super(HGConstruct, self). __init__()
+        self.args=args
         self.eps = eps
         self.min_samples = min_samples
         self.clusters = None
@@ -68,8 +69,9 @@ class HGConstruct(nn.Module):
         return incidence_matrix
 
     def forward(self, inputs, inc_mat):
-        lda_hg = self.lda(inputs)
-        dep_hg = self.dep(inputs)
+        lda_hg = self.lda(inputs).to(self.args.device)
+        dep_hg = self.dep(inputs).to(self.args.device)
+        inc_mat = inc_mat.to(self.args.device)
         final_inc = torch.cat((dep_hg, inc_mat, lda_hg), dim=2)
         return final_inc
 
@@ -94,8 +96,9 @@ class HGConstruct(nn.Module):
 #         return X_agg
 
 class VertexConv(nn.Module):
-    def __init__(self, in_feats, out_feats):
+    def __init__(self, args, in_feats, out_feats):
         super(VertexConv, self).__init__()
+        self.args=args
         self.in_feats = in_feats
         self.out_feats = out_feats
         self.attention = nn.Linear(in_feats, out_feats, bias=False)
@@ -109,23 +112,25 @@ class VertexConv(nn.Module):
         b, m, d = feature_mat.size()
         b, _, e = inc_mat.size()
 
+        self.attention = self.attention.to(self.args.device)
+        self.projection=self.projection.to(self.args.device)
         # Compute attention scores for each node for each edge
-        node_attention_scores = self.attention(feature_mat)  # (m x out_feats)
+        node_attention_scores = self.attention(feature_mat) # (m x out_feats)
 
         # Compute attention scores for each edge by aggregating node scores
-        edge_attention_scores = torch.bmm(inc_mat.transpose(1, 2), node_attention_scores)  # (e x out_feats)
+        edge_attention_scores = torch.bmm(inc_mat.transpose(1, 2), node_attention_scores) # (e x out_feats)
 
         # Apply softmax to get attention weights for each edge
-        attention_weights = F.softmax(edge_attention_scores, dim=1)  # (e x out_feats)
+        attention_weights = F.softmax(edge_attention_scores, dim=1) # (e x out_feats)
 
         # Compute weighted node features
-        weighted_node_features = torch.einsum('bme,bmd->bmed', inc_mat, feature_mat)  # (m x e x d)
+        weighted_node_features = torch.einsum('bme,bmd->bmed', inc_mat, feature_mat)# (m x e x d)
 
         # Aggregate weighted node features to get edge features
         edge_features = torch.einsum('bmed,bed->bed', weighted_node_features, attention_weights)  # (e x d)
 
         # Project aggregated edge features to the output dimension
-        edge_features = self.projection(edge_features)  # (e x out_feats)
+        edge_features = self.projection(edge_features) # (e x out_feats)
 
         # If previous edge features are provided, combine them with the new ones based on alpha
         if prev_edge_features is not None:
@@ -134,8 +139,9 @@ class VertexConv(nn.Module):
         return edge_features
 
 class EdgeConv(nn.Module):
-    def __init__(self, in_feats, out_feats):
+    def __init__(self, args, in_feats, out_feats):
         super(EdgeConv, self).__init__()
+        self.args=args
         self.in_feats = in_feats
         self.out_feats = out_feats
         self.attention = nn.Linear(in_feats, out_feats, bias=False)
@@ -147,6 +153,9 @@ class EdgeConv(nn.Module):
         # edge_features: (e x d) -> e: number of edges, d: edge feature dimension
 
         b, m, e = inc_mat.size()
+
+        self.attention = self.attention.to(self.args.device)
+        self.projection=self.projection.to(self.args.device)
 
         # Compute attention scores for each edge
         edge_attention_scores = self.attention(edge_features)  # (e x out_feats)
@@ -194,8 +203,9 @@ class EdgeConv(nn.Module):
 #         return output_features
 
 class HypergraphEdgeAggregation(nn.Module):
-    def __init__(self, in_features, out_features):
+    def __init__(self, args, in_features, out_features):
         super(HypergraphEdgeAggregation, self).__init__()
+        self.args = args
         self.in_features = in_features
         self.out_features = out_features
         self.projection = nn.Linear(in_features, out_features)
@@ -208,6 +218,9 @@ class HypergraphEdgeAggregation(nn.Module):
         :param edge_features: Aggregated node features for each edge (e x d)
         :return: Aggregated edge features (out_features)
         """
+
+        self.projection=self.projection.to(self.args.device)
+        self.attention =self.attention.to(self.args.device)
         # Compute attention scores for each edge
         attention_scores = self.attention(edge_features)  # (b x e x 1)
         attention_weights = F.softmax(attention_scores, dim=1)  # (b x e x 1)
@@ -231,9 +244,9 @@ class MessagePassing(nn.Module):
         self.dim_in = args.dim_in
         self.hidden_num = args.hidden_num
         self.num_layers = args.n_layers
-        self.vc = VertexConv(self.dim_in, self.dim_in)
+        self.vc = VertexConv(args, self.dim_in, self.dim_in)
         self.construct = HGConstruct(args=args, eps=self.eps, min_samples = self.min_samples)
-        self.ec = EdgeConv(self.dim_in, self.dim_in)
+        self.ec = EdgeConv(args, self.dim_in, self.dim_in)
     
     def forward(self, inputs, inc_mat):
         # features = features.squeeze(0)
@@ -251,17 +264,18 @@ class MessagePassing(nn.Module):
 class HGConv(nn.Module):
     def  __init__(self, args) -> None:
         super(). __init__()
-
+        self.args=args
         self.dim_in = args.dim_in
         self.n_categories = args.n_categories  # Number of output categories
         self.has_bias = True  # Whether to use bias in the fc layer
         self.dropout = nn.Dropout(args.dropout_rate)
-        self.vc = VertexConv(self.dim_in, self.dim_in)
-        self.ec = HypergraphEdgeAggregation(self.dim_in, self.dim_in)
+        self.vc = VertexConv(args, self.dim_in, self.dim_in)
+        self.ec = HypergraphEdgeAggregation(args, self.dim_in, self.dim_in)
         self.fc = nn.Linear(self.dim_in, self.n_categories, bias=self.has_bias)
         self.activation = nn.LogSoftmax(dim=-1)  # Activation function for the output layer
     
     def forward(self, node_feats, edge_feats, inc_mat):
+        self.fc=self.fc.to(self.args.device)
         edge_feat = self.vc(node_feats, inc_mat, edge_feats)
         logits = self.ec(edge_feat)
         logits = self.fc((logits))

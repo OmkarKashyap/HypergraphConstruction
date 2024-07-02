@@ -17,11 +17,17 @@ class DependencyHG(nn.Module):
     def forward(self, inputs):
         feats, tokens, aspect, pos, post, head, deprel, sen_len, adk, pos_mask, word_mask, aspect_pos_start, aspect_pos_end,plain_text, text_list= inputs
         
+        # Move tensors to the same device
+        feats = feats.to(self.args.device)
+        tokens = [t.to(self.args.device) for t in tokens]
+        word_mask = [wm.to(self.args.device) for wm in word_mask]
+
+        # Process through graph model and GNN layer
         adj = self.graph_model(inputs)
+        adj = adj.to(self.args.device)  # Ensure adj is on the same device
         out = self.gnn(feats, adj, word_mask)
-        
+        out = out.to(self.args.device)
+        # Community detection
         communities, incidence_matrix = self.community.louvain(out, tokens, text_list, word_mask)
-        # print(incidence_matrix)
-        # return hypergraph
-        return incidence_matrix
         
+        return incidence_matrix

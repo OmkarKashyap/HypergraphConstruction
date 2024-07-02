@@ -30,9 +30,9 @@ class HGSCAN(nn.Module):
         # self.hgl = [HGScanLayer() for i in range(self.n_layers)]
         self.hgl = HGScanLayer(args)
     
-    def forward(self, features):
-        x = features
-        x = self.hgl(x)
+    def forward(self, inputs, inc_mat):
+        # x = features
+        x = self.hgl(inputs, inc_mat)
         x = self.dropout(x)  # Apply dropout after each layer
         print(x)
         return x.unsqueeze(0)

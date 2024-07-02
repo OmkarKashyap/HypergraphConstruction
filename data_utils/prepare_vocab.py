@@ -16,7 +16,7 @@ def parse_args():
     
 class VocabHelp(object):
     def __init__(self, counter, specials=['<pad>', '<unk>']):
-        self.pad_index = 0
+        self.pad_index = -1
         self.unk_index = 1
         counter = counter.copy()
         self.itos = list(specials)
@@ -61,49 +61,7 @@ class VocabHelp(object):
         with open(vocab_path, "wb") as f:
             pickle.dump(self, f)
 
-class AmitVocab:
-    def __init__(self, vocab_file, content_file, vocab_size=1000):
-        
-        self.vocab_file = vocab_file
-        self.content_file=content_file
-        self.vocab_size=vocab_size
-        
-        self.word2id= {'[PADDING]': 0, '[START]': 1, '[END]': 2, '[OOV]': 3, '[MASK]': 4}
-        self.id2word= ['[PADDING]', '[START]', '[END]', '[OOV]', '[MASK]']
-        self.word_count= {'[PADDING]': 1, '[START]': 1, '[END]': 1, '[OOV]': 1, '[MASK]': 1}
-        
-        if not os.path.exists(self.vocab_file):
-            self.build_vocab(content_file, vocab_file)
-            
-        self.load_vocab(vocab_file, vocab_size)
-        self.vocab_size = len(self.word2id)
-        
-        
-    
-    @staticmethod
-    def build_vocab(self):
-        pass
-    
-    def token2idx(self):
-        pass
-    
-    def idx2token(self):
-        pass
-    
-    def add_special_tokens(self):
-        pass
-    
-    def get_special_token_indices(self):
-        pass
-    
-    def save_vocab(self):
-        pass
-    
-    def load_vocab(self):
-        with open(self.vocab_file, 'r') as f:
-            vocab_data = json.load(f)
-            tokens = vocab_data['tokens']
-            
+
     
 def main():
     args = parse_args()
@@ -123,11 +81,13 @@ def main():
     vocab_dep_file = args.vocab_dir + '/vocab_dep.vocab'
     # polarity
     vocab_pol_file = args.vocab_dir + '/vocab_pol.vocab'
+    #head
+    vocab_head_file = args.vocab_dir + '/vocab_head.vocab'
 
     # load files
     print("loading files...")
-    train_tokens, train_pos, train_dep, train_max_len = load_tokens(train_file)
-    test_tokens, test_pos, test_dep, test_max_len = load_tokens(test_file)
+    train_tokens, train_pos, train_dep, train_max_len, train_head = load_tokens(train_file)
+    test_tokens, test_pos, test_dep, test_max_len, test_head = load_tokens(test_file)
 
     # lower tokens
     if args.lower:
@@ -141,6 +101,7 @@ def main():
     max_len = max(train_max_len, test_max_len)
     post_counter = Counter(list(range(-max_len, max_len)))
     pol_counter = Counter(['positive', 'negative', 'neutral'])
+    head_counter = Counter(train_head+test_head )
 
     # build vocab
     print("building vocab...")
@@ -149,7 +110,8 @@ def main():
     dep_vocab = VocabHelp(dep_counter, specials=['<pad>', '<unk>'])
     post_vocab = VocabHelp(post_counter, specials=['<pad>', '<unk>'])
     pol_vocab = VocabHelp(pol_counter, specials=[])
-    print("token_vocab: {}, pos_vocab: {}, dep_vocab: {}, post_vocab: {}, pol_vocab: {}".format(len(token_vocab), len(pos_vocab), len(dep_vocab), len(post_vocab), len(pol_vocab)))
+    head_vocab = VocabHelp(head_counter, specials=['<pad>', '<unk>'])
+    print("token_vocab: {}, pos_vocab: {}, dep_vocab: {}, post_vocab: {}, pol_vocab: {}, head_vocab:{}".format(len(token_vocab), len(pos_vocab), len(dep_vocab), len(post_vocab), len(pol_vocab), len(head_vocab) ))
 
     print("dumping to files...")
     token_vocab.save_vocab(vocab_tok_file)
@@ -157,6 +119,7 @@ def main():
     dep_vocab.save_vocab(vocab_dep_file)
     post_vocab.save_vocab(vocab_post_file)
     pol_vocab.save_vocab(vocab_pol_file)
+    head_vocab.save_vocab(vocab_head_file)
     print("all done.")
 
 def load_tokens(filename):
@@ -165,14 +128,16 @@ def load_tokens(filename):
         tokens = []
         pos = []
         dep = []
+        head=[]
         max_len = 0
         for d in data:
             tokens.extend(d['token'])
             pos.extend(d['pos'])
             dep.extend(d['deprel'])
             max_len = max(len(d['token']), max_len)
+            head.extend(d['head'])
     print("{} tokens from {} examples loaded from {}.".format(len(tokens), len(data), filename))
-    return tokens, pos, dep, max_len
+    return tokens, pos, dep, max_len, head
 
 if __name__ == '__main__':
     main()

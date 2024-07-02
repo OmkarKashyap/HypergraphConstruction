@@ -1,2 +1,4 @@
 /venv
 /glove
+train.pkl
+test.pkl

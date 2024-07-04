@@ -1,0 +1,13 @@
+{"time":"2024-07-04T12:54:30.601692558+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T12:54:30.601697979+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_125430-gep3eavy/logs/debug-core.log"}
+{"time":"2024-07-04T12:54:30.606254388+05:30","level":"INFO","msg":"created new stream","id":"gep3eavy"}
+{"time":"2024-07-04T12:54:30.60627259+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"gep3eavy"}}
+{"time":"2024-07-04T12:54:30.606279885+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"gep3eavy"}}
+{"time":"2024-07-04T12:54:30.606281192+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"gep3eavy"}}
+{"time":"2024-07-04T12:54:31.232763397+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-07-04T12:54:31.274131087+05:30","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-07-04T12:54:32.74697684+05:30","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-07-04T12:54:32.747996546+05:30","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-07-04T12:54:34.021420421+05:30","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"gep3eavy"}}
+{"time":"2024-07-04T12:54:34.021444747+05:30","level":"INFO","msg":"sender: closed","stream_id":{"value":"gep3eavy"}}
+{"time":"2024-07-04T12:54:34.021487995+05:30","level":"INFO","msg":"closed stream","id":"gep3eavy"}

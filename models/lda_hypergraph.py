@@ -10,12 +10,12 @@ import torch.nn.functional as F
 
 
 class SemanticHypergraphModel(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, config):
         super(SemanticHypergraphModel, self).__init__()
-        self.num_topics = args.num_topics
+        self.num_topics = config.num_topics
         self.word_dimension = args.dim_in
         self.num_classes = args.n_categories
-        self.top_k = args.top_k
+        self.top_k = config.top_k
         self.topic_vectors = nn.Parameter(torch.randn(self.num_topics, self.word_dimension))
         self.fc = nn.Linear(self.num_topics, self.num_classes)
         

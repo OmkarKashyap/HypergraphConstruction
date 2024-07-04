@@ -1,0 +1,8 @@
+{"time":"2024-07-04T14:34:16.047139002+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T14:34:16.047149505+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_143416-0a4rcsfp/logs/debug-core.log"}
+{"time":"2024-07-04T14:34:16.052535093+05:30","level":"INFO","msg":"created new stream","id":"0a4rcsfp"}
+{"time":"2024-07-04T14:34:16.052558846+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"0a4rcsfp"}}
+{"time":"2024-07-04T14:34:16.052590908+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"0a4rcsfp"}}
+{"time":"2024-07-04T14:34:16.052629539+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"0a4rcsfp"}}
+{"time":"2024-07-04T14:34:16.516602344+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-07-04T14:34:16.557854192+05:30","level":"INFO","msg":"Starting system monitor"}

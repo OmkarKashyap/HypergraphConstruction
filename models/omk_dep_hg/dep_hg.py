@@ -6,12 +6,12 @@ import numpy as np
 from models.omk_dep_hg.dep_hg_utils import DependencyGraph, GNNLayer, CommunityDetection
 
 class DependencyHG(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, config):
         super(DependencyHG, self).__init__()
         
         self.args =args
         self.graph_model = DependencyGraph(args)
-        self.gnn = GNNLayer(args)
+        self.gnn = GNNLayer(args, config)
         self.community = CommunityDetection(args)
         
     def forward(self, inputs):
@@ -28,6 +28,6 @@ class DependencyHG(nn.Module):
         out = self.gnn(feats, adj, word_mask)
         out = out.to(self.args.device)
         # Community detection
-        communities, incidence_matrix = self.community.louvain(out, tokens, text_list, word_mask)
+        communities, incidence_matrix = self.community.louvain(adj, out, tokens, text_list, word_mask)
         
         return incidence_matrix

@@ -8,14 +8,14 @@ from models.omk_dep_hg.dep_hg import DependencyHG
 from models.lda_hypergraph import SemanticHypergraphModel
 
 class HGConstruct(nn.Module):
-    def __init__(self, eps, min_samples, args) -> None:
+    def __init__(self,args, config) -> None:
         super(HGConstruct, self). __init__()
         self.args=args
-        self.eps = eps
-        self.min_samples = min_samples
+        self.eps = config.eps
+        self.min_samples = config.min_samples
         self.clusters = None
-        self.dep = DependencyHG(args)
-        self.lda = SemanticHypergraphModel(args)
+        self.dep = DependencyHG(args, config)
+        self.lda = SemanticHypergraphModel(args, config)
         # self.attention_context_vector = nn.Parameter(torch.empty(self.output_size))
 
 
@@ -74,26 +74,6 @@ class HGConstruct(nn.Module):
         inc_mat = inc_mat.to(self.args.device)
         final_inc = torch.cat((dep_hg, inc_mat, lda_hg), dim=2)
         return final_inc
-
-        
-# class VertexConv(nn.Module):
-#     def  __init__(self, in_feats, out_feats):
-#         super(). __init__()
-#         self.in_dim = in_feats
-#         self.out_dim = out_feats
-#         self.attention = torch.nn.Linear(self.in_dim, self.out_dim, bias=False)
-#         self.projection = torch.nn.Linear(self.in_dim, self.out_dim, bias=False)
-    
-#     def forward(self, feature_mat, inc_mat):
-#         m, d = feature_mat.size()
-#         _, e = inc_mat.size()
-
-#         attention_scores = self.attention(feature_mat)  # (m x out_features)
-        
-#         # Aggregate node features to get edge features
-#         X_agg = inc_mat.T @ feature_mat  # (e x d)
-        
-#         return X_agg
 
 class VertexConv(nn.Module):
     def __init__(self, args, in_feats, out_feats):
@@ -180,28 +160,6 @@ class EdgeConv(nn.Module):
         return node_features
         
 
-# class HypergraphEdgeAggregation(nn.Module):
-#     def  __init__(self, in_features, out_features):
-#         super(HypergraphEdgeAggregation, self). __init__()
-#         self.in_features = in_features
-#         self.out_features = out_features
-#         self.projection = nn.Linear(in_features, out_features)
-    
-#     def forward(self, edge_features):
-#         """
-#         Perform edge aggregation for hypergraph representation.
-        
-#         :param edge_features: Aggregated node features for each edge (e x d)
-#         :return: Aggregated edge features (out_features)
-#         """
-#         # Perform mean pooling across all edges
-#         pooled_features = torch.mean(edge_features, dim=0)  # (d,) -> (out_features,)
-        
-#         # Project to output features
-#         output_features = self.projection(pooled_features)  # (out_features,)
-        
-#         return output_features
-
 class HypergraphEdgeAggregation(nn.Module):
     def __init__(self, args, in_features, out_features):
         super(HypergraphEdgeAggregation, self).__init__()
@@ -236,16 +194,13 @@ class HypergraphEdgeAggregation(nn.Module):
 
 
 class MessagePassing(nn.Module):
-    def __init__(self, args) -> None:
+    def __init__(self, args, config) -> None:
         super().__init__()
-        self.eps = args.eps
-        self.min_samples = args.min_samples
-        self.output_size = args.output_size
         self.dim_in = args.dim_in
         self.hidden_num = args.hidden_num
-        self.num_layers = args.n_layers
+        self.num_layers = config.n_layers
         self.vc = VertexConv(args, self.dim_in, self.dim_in)
-        self.construct = HGConstruct(args=args, eps=self.eps, min_samples = self.min_samples)
+        self.construct = HGConstruct(args, config)
         self.ec = EdgeConv(args, self.dim_in, self.dim_in)
     
     def forward(self, inputs, inc_mat):
@@ -282,9 +237,9 @@ class HGConv(nn.Module):
         return logits
     
 class HGScanLayer(nn.Module):
-    def __init__(self, args) -> None:
+    def __init__(self, args, config) -> None:
         super().__init__()
-        self.msg_pass = MessagePassing(args)
+        self.msg_pass = MessagePassing(args, config)
         self.conv = HGConv(args)
     
     def forward(self, inputs, inc_mat):
@@ -292,32 +247,6 @@ class HGScanLayer(nn.Module):
         logits = self.conv(node_feats, edge_feats, inc_mat)
         return logits
 
-class SqueezeEmbedding(nn.Module):
-    '''
-    Squeeze sequence embedding length to the longest one in the batch
-    '''
-    def  __init__(self, batch_first=True):
-        super(SqueezeEmbedding, self). __init__()
-        self.batch_first = batch_first
-    
-    def forward(self, x, x_len):
-        '''
-        sequence -> sort -> pad and pack -> unpack -> unsort
-        '''
-        '''sort'''
-        x_sort_idx = torch.sort(x_len, descending=True)[1].long()
-        x_unsort_idx = torch.sort(x_sort_idx)[1].long()
-        x_len = x_len[x_sort_idx]
-        x = x[x_sort_idx]
-        '''pack'''
-        x_emb_p = torch.nn.utils.rnn.pack_padded_sequence(x, x_len, batch_first=self.batch_first)
-        '''unpack'''
-        out, _ = torch.nn.utils.rnn.pad_packed_sequence(x_emb_p, batch_first=self.batch_first)
-        if self.batch_first:
-            out = out[x_unsort_idx]
-        else:
-            out = out[:, x_unsort_idx]
-        return out
 
         
 

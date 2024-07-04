@@ -1,0 +1,208 @@
+{
+    "os": "Linux-6.5.0-41-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2024-07-04T07:15:30.992799",
+    "startedAt": "2024-07-04T07:15:30.260577",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/ccbd01/HypergraphConstruction/train_with_wandb.py",
+    "codePathLocal": "train_with_wandb.py",
+    "codePath": "train_with_wandb.py",
+    "git": {
+        "remote": "https://github.com/OmkarKashyap/HypergraphConstruction.git",
+        "commit": "bbbb4fdb1ddbfbc6e4ad9681aa014a7d6a8eb3b8"
+    },
+    "email": "amitpadegal123@gmail.com",
+    "root": "/home/ccbd01/HypergraphConstruction",
+    "host": "ccbd01-Precision-3660",
+    "username": "ccbd01",
+    "executable": "/home/ccbd01/HypergraphConstruction/venv/bin/python3",
+    "cpu_count": 24,
+    "cpu_count_logical": 32,
+    "cpu_freq": {
+        "current": 1419.56090625,
+        "min": 800.0,
+        "max": 4787.5
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2556.832,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5244.953,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5300.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 1485.269,
+            "min": 800.0,
+            "max": 5600.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5600.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5600.0
+        },
+        {
+            "current": 4698.778,
+            "min": 800.0,
+            "max": 5600.0
+        },
+        {
+            "current": 5300.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4997.167,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4151.475,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4822.5,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5251.945,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3582.981,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 1780.639,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 1436.053,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4200.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 385.99983978271484,
+            "used": 121.7535285949707
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4090",
+            "memory_total": 24146608128
+        }
+    ],
+    "memory": {
+        "total": 125.48067855834961
+    }
+}

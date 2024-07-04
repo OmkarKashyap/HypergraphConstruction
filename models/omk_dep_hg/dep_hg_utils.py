@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import itertools
 from nltk.corpus import stopwords
 import string
+from community import community_louvain
 
 # class Graph(object):
 #     def __init__(self, args):
@@ -117,10 +118,10 @@ class DependencyGraph(nn.Module):
     
 
 class GNNLayer(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, config):
         super(GNNLayer, self).__init__()
         self.args = args
-        self.aggregation_type = self.args.gnn_aggregation_type
+        self.aggregation_type = config.gnn_aggregation_type
         self.linear = nn.Linear(args.dim_in, args.hidden_dim)
         self.linear2 = nn.Linear(self.args.hidden_dim, self.args.dim_in)
         
@@ -179,98 +180,46 @@ class CommunityDetection(object):
         super().__init__()
         self.args = args
         
-    def louvain(self, embeddings, tokens_batch, text_list, word_mask, min_degree=2):
-        """
-        Perform Girvan-Newman community detection on the provided embeddings after removing padding tokens.
+    def louvain(self, adj, node_embeddings, tokens, text_list, word_mask):
+        batch_size, max_length, _ = node_embeddings.size()
+        incidence_matrices = []
+        max_communities = 0
+        community_list = []
 
-        Args:
-        - embeddings (torch.Tensor): Node embeddings of shape (batch_size, num_nodes, embedding_dim).
-        - tokens_batch (list of lists): List of tokens for each graph in the batch.
-        - text_list (list of str): List of text samples or document identifiers (for reference).
-        - word_mask (torch.Tensor): Mask indicating padding tokens of shape (batch_size, max_length).
-
-        Returns:
-        - List of lists containing community assignments for each node in each graph in the batch.
-        - Tensor of padded incidence matrices for each graph in the batch, structured as [batch_size, max_length, max_number of communities].
-        """
-        self.embeddings = embeddings.to(self.args.device)
-        self.word_mask = [wm.to(self.args.device) for wm in word_mask]
-        self.threshold = self.args.louvain_threshold
-        batch_size, num_nodes, embedding_dim = self.embeddings.size()
-        
-        communities_batch = []
-        incidence_matrices_batch = []
-        max_num_hyperedges = 0
-
-        for batch_idx in range(batch_size):
-            tokens = tokens_batch[batch_idx]
-    
-            # Get non-padding token indices
-            non_padding_indices = torch.nonzero(self.word_mask[batch_idx]).squeeze().to(self.args.device)
-            tokens = [tokens[i.item()] for i in non_padding_indices]
-            num_tokens = len(tokens)
-            
-            # Extract embeddings and adjacency matrix for non-padding tokens
-            embeddings_batch = self.embeddings[batch_idx, non_padding_indices]
-            
-            adj_matrix = torch.mm(embeddings_batch, embeddings_batch.transpose(0, 1))
-            
-            # Apply thresholding to convert to binary adjacency matrix
-            adj_matrix_binary = (adj_matrix > self.threshold).float().to(self.args.device)
-            
-            # Create padded adjacency matrix
-            padded_adj_matrix = torch.full((self.args.max_length, self.args.max_length), -1.0).to(self.args.device)
-            padded_adj_matrix[non_padding_indices[:, None], non_padding_indices] = adj_matrix_binary
-            
-            # Convert adjacency matrix to networkx graph
-            G = nx.DiGraph()
-            max_length = padded_adj_matrix.shape[0]
-            
-            for i in range(num_tokens):
-                for j in range(num_tokens):
-                    if adj_matrix_binary[i, j] > 0:
-                        G.add_edge(i, j)
-            
-            # print(f"Graph for {text_list[batch_idx]}:")
-            # print("Number of nodes:", G.number_of_nodes())
-            # print("Number of edges:", G.number_of_edges())
-        
-            # Perform Girvan-Newman community detection
-            communities = nx.algorithms.community.greedy_modularity_communities(G)
-            # Convert communities to a list of sets
-            hyperedges = list(communities)
-
-            # Determine number of nodes and hyperedges
-            num_nodes = max_length
-            num_hyperedges = len(hyperedges)
-            
-            # Update max_num_hyperedges if current graph has more hyperedges
-            if num_hyperedges > max_num_hyperedges:
-                max_num_hyperedges = num_hyperedges
-
-            # Initialize incidence matrix
-            incidence_matrix = np.full((num_nodes, num_hyperedges), -1)
-
-            # Populate incidence matrix based on hyperedges
-            for h_idx, hyperedge in enumerate(hyperedges):
-                for node_idx in hyperedge:
-                    incidence_matrix[node_idx, h_idx] = 1
-
-            # Append results to batch lists
-            communities_batch.append(communities)
-            incidence_matrices_batch.append(incidence_matrix)
-        
-        # Pad incidence matrices to the max number of hyperedges and convert to tensor
-        padded_incidence_matrices_batch = []
-        for incidence_matrix in incidence_matrices_batch:
-            padded_incidence_matrix = np.pad(incidence_matrix, ((0, 0), (0, max_num_hyperedges - incidence_matrix.shape[1])), mode='constant', constant_values=-1)
-            padded_incidence_matrices_batch.append(torch.tensor(padded_incidence_matrix, dtype=torch.float32))
-
-        # Stack all incidence matrices to get the final tensor of shape [batch_size, max_length, max_num_hyperedges]
-        padded_incidence_matrices_batch = torch.stack(padded_incidence_matrices_batch)
-        
-        return communities_batch, padded_incidence_matrices_batch
-        
+        for i in range(batch_size):
+            G = nx.Graph()
+            for j in range(max_length):
+                if word_mask[i][j] == 0:
+                    continue
+                G.add_node(j, feature=node_embeddings[i, j].cpu().detach().numpy())
+           
+            # Add edges to the graph based on the adjacency matrix
+            adj_np = adj[i].cpu().detach().numpy()  # Convert adjacency matrix to numpy
+            for u in range(max_length):
+                for v in range(u + 1, max_length):
+                    if adj_np[u, v] > 0:
+                        G.add_edge(u, v, weight=adj_np[u, v])
+           
+            # Perform Louvain community detection
+            partition = community_louvain.best_partition(G)
+            communities = {}
+            for node, community in partition.items():
+                if community not in communities:
+                    communities[community] = []
+                communities[community].append(node)
+            community_list.append(communities)  
+            max_communities = max(max_communities, len(communities))
+       
+        # Construct and pad incidence matrices
+        for i, communities in enumerate(community_list):
+            incidence_matrix = np.zeros((max_length, max_communities))
+            for hyperedge_id, nodes in communities.items():
+                for node in nodes:
+                    incidence_matrix[node, hyperedge_id] = 1
+            incidence_matrices.append(torch.tensor(incidence_matrix, dtype=torch.float32))
+       
+        incidence_matrices = torch.stack(incidence_matrices)
+        return community_list, incidence_matrices
         
     
     def girvan_newman(self, embeddings, tokens_batch, text_list, word_mask, min_degree=2):

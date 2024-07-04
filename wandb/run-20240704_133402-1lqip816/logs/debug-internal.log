@@ -1,0 +1,11 @@
+{"time":"2024-07-04T13:34:02.285156682+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T13:34:02.285162451+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_133402-1lqip816/logs/debug-core.log"}
+{"time":"2024-07-04T13:34:02.289948758+05:30","level":"INFO","msg":"created new stream","id":"1lqip816"}
+{"time":"2024-07-04T13:34:02.28997068+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"1lqip816"}}
+{"time":"2024-07-04T13:34:02.289967821+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"1lqip816"}}
+{"time":"2024-07-04T13:34:02.289967438+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"1lqip816"}}
+{"time":"2024-07-04T13:34:02.97005661+05:30","level":"WARN","msg":"No requirements.txt found, not creating job artifact. See https://docs.wandb.ai/guides/launch/create-job"}
+{"time":"2024-07-04T13:34:02.970070741+05:30","level":"INFO","msg":"sender: sendDefer: no job artifact to save"}
+{"time":"2024-07-04T13:34:03.655964166+05:30","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"1lqip816"}}
+{"time":"2024-07-04T13:34:03.656039718+05:30","level":"INFO","msg":"sender: closed","stream_id":{"value":"1lqip816"}}
+{"time":"2024-07-04T13:34:03.656066705+05:30","level":"INFO","msg":"closed stream","id":"1lqip816"}

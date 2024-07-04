@@ -407,6 +407,9 @@ from transformers import BertTokenizer
 from torch.utils.data import Dataset
 from models.layers import HGConstruct
 
+
+from nltk.corpus import stopwords
+import string
 import torch
 import torch.nn as nn 
 
@@ -568,8 +571,9 @@ class Tokenizer(object):
 
 class SentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
-    def __init__(self, fname, tokenizer, args, vocab_help, embedding_matrix, save_path):
-
+    def __init__(self, fname, tokenizer, args, config, vocab_help, embedding_matrix, save_path):
+        self.stop_words = set(stopwords.words('english'))
+        self.punctuation = set(string.punctuation)
         i = 0
         inc_exists = False
         if os.path.exists(save_path):
@@ -579,21 +583,23 @@ class SentenceDataset(Dataset):
         else:
             self.incidences = []
         
-        self.construct = HGConstruct(args.eps, args.min_samples, args)
+        self.construct = HGConstruct(args, config)
         self.embedding = nn.Embedding.from_pretrained(embedding_matrix, freeze=True, padding_idx=0)
         parse = ParseData
         post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab = vocab_help
         data = list()
         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
-                        
+            text_list = obj['text_list']            
             plain_text = obj['text']
             text = tokenizer.text_to_sequence(obj['text'])
 
-
             text_temp = text.copy()
             text_temp = [0 if x == -1 else x for x in text_temp]
-            text_tensor = torch.as_tensor(text_temp, dtype=torch.int64)
+        
+            updated_token_ids = [0 if text_list[i] in self.stop_words else text_temp[i] for i in range(len(text_list))]
+            updated_token_ids = tokenizer.pad_sequence(updated_token_ids, pad_id=0, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
+            text_tensor = torch.as_tensor(updated_token_ids, dtype=torch.int64)
             
             x = self.embedding(text_tensor)
             if not inc_exists:
@@ -629,7 +635,6 @@ class SentenceDataset(Dataset):
             
             adj = np.ones(args.max_length) * args.pad_id
             
-            text_list = obj['text_list']
             
             data.append({
                 'text': text, 

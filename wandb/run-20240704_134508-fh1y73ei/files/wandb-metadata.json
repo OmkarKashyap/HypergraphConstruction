@@ -1,0 +1,40 @@
+{
+  "os":  "Linux-6.5.0-41-generic-x86_64-with-glibc2.35",
+  "python":  "3.10.12",
+  "startedAt":  "2024-07-04T08:15:08.730687Z",
+  "program":  "/home/ccbd01/HypergraphConstruction/train_with_wandb.py",
+  "codePath":  "train_with_wandb.py",
+  "git":  {
+    "remote":  "https://github.com/OmkarKashyap/HypergraphConstruction.git",
+    "commit":  "bbbb4fdb1ddbfbc6e4ad9681aa014a7d6a8eb3b8"
+  },
+  "email":  "omkar.m.kashyap@gmail.com",
+  "root":  "/home/ccbd01/HypergraphConstruction",
+  "host":  "ccbd01-Precision-3660",
+  "username":  "ccbd01",
+  "executable":  "/home/ccbd01/HypergraphConstruction/venv/bin/python",
+  "codePathLocal":  "train_with_wandb.py",
+  "cpu_count":  24,
+  "cpu_count_logical":  32,
+  "gpu":  "[NVIDIA GeForce RTX 4090]",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "414464172032",
+      "used":  "131102121984"
+    }
+  },
+  "memory":  {
+    "total":  "134733852672"
+  },
+  "cpu":  {
+    "count":  24,
+    "countLogical":  32
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 4090",
+      "memoryTotal":  "24146608128"
+    }
+  ]
+}

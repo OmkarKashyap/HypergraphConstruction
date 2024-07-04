@@ -1,0 +1,13 @@
+{"time":"2024-07-04T15:11:03.533939725+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T15:11:03.533951806+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_151103-p4bg7ujx/logs/debug-core.log"}
+{"time":"2024-07-04T15:11:03.540110019+05:30","level":"INFO","msg":"created new stream","id":"p4bg7ujx"}
+{"time":"2024-07-04T15:11:03.540141746+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"p4bg7ujx"}}
+{"time":"2024-07-04T15:11:03.540128643+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"p4bg7ujx"}}
+{"time":"2024-07-04T15:11:03.540153005+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"p4bg7ujx"}}
+{"time":"2024-07-04T15:11:03.871777957+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-07-04T15:11:03.914056971+05:30","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-07-04T15:11:06.622060286+05:30","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-07-04T15:11:06.62301531+05:30","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-07-04T15:11:08.138130406+05:30","level":"INFO","msg":"sender: closed","stream_id":{"value":"p4bg7ujx"}}
+{"time":"2024-07-04T15:11:08.138125368+05:30","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"p4bg7ujx"}}
+{"time":"2024-07-04T15:11:08.138219252+05:30","level":"INFO","msg":"closed stream","id":"p4bg7ujx"}

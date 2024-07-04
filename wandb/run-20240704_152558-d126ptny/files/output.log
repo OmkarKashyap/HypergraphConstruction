@@ -1,0 +1,8 @@
+loading tokenizer: dataset/Laptops_corenlp/laptop_tokenizer.dat
+loading embedding matrix: dataset/Laptops_corenlp/300d_laptop_embedding_matrix.dat
+Traceback (most recent call last):
+  File "/home/ccbd01/HypergraphConstruction/train_with_wandb.py", line 293, in train_and_evaluate
+    trainset = SentenceDataset(args.dataset_file['train'], tokenizer, args, vocab_help, embedding_matrix, f'pickled_datasets/train_{config.eps}_{config.min_samples}.pkl')
+  File "/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py", line 586, in __init__
+    self.construct = HGConstruct(args.eps, args.min_samples, args)
+TypeError: HGConstruct.__init__() takes 3 positional arguments but 4 were given

@@ -1,0 +1,20 @@
+wandb_version: 1
+
+batch_size:
+  value: 64
+dropout_rate:
+  value: 0.2
+epochs:
+  value: 30
+eps:
+  value: 0.001
+learning_rate:
+  value: 0.001
+min_samples:
+  value: 3
+n_layers:
+  value: 1
+num_topics:
+  value: 5
+top_k:
+  value: 2

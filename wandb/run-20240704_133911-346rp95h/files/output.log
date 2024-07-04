@@ -1,0 +1,37 @@
+loading tokenizer: dataset/Laptops_corenlp/laptop_tokenizer.dat
+loading embedding matrix: dataset/Laptops_corenlp/300d_laptop_embedding_matrix.dat
+Training examples: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2282/2282 [00:00<00:00, 18341.11it/s]
+Training examples: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 632/632 [00:00<00:00, 19800.56it/s]
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+/home/ccbd01/HypergraphConstruction/data_utils/data_utils.py:766: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.embedding_matrix = torch.tensor(embedding_matrix, dtype=torch.float).to(device=args.device)
+[34m[1mwandb[0m: Ctrl + C detected. Stopping sweep.

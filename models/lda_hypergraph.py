@@ -10,18 +10,19 @@ import torch.nn.functional as F
 
 
 class SemanticHypergraphModel(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, config):
         super(SemanticHypergraphModel, self).__init__()
-        self.num_topics = args.num_topics
+        self.num_topics = config.num_topics
         self.word_dimension = args.dim_in
         self.num_classes = args.n_categories
-        self.top_k = args.top_k
+        self.top_k = config.top_k
         self.topic_vectors = nn.Parameter(torch.randn(self.num_topics, self.word_dimension))
         self.fc = nn.Linear(self.num_topics, self.num_classes)
         
     def forward(self, inputs):
+        inputs = inputs[0]
         # inputs shape: [batch_size, max_len, word_dimension]
-        batch_size, max_len, word_dimension = inputs.size()
+        batch_size, max_len, word_dimension = inputs.shape
         
         # Flatten inputs to [batch_size * max_len, word_dimension]
         flattened_inputs = inputs.view(batch_size * max_len, word_dimension)
@@ -32,21 +33,16 @@ class SemanticHypergraphModel(nn.Module):
         # Select top K words for each topic
         top_indices = torch.topk(topic_distributions, self.top_k, dim=1)[1]  # shape (num_topics, top_k)
         
-        # Create masks for selected top words
-        masks = torch.zeros_like(topic_distributions)  # shape (num_topics, word_dimension)
+        top_indices = top_indices % max_len
+
+        hypergraph = torch.zeros(batch_size,max_len, self.num_topics, device=inputs.device)
+
         for i in range(self.num_topics):
-            masks[i, top_indices[i]] = 1.0
+            for j in range(self.top_k):
+                word_idx = top_indices[i,j]
+                for b in range(batch_size):
+                    hypergraph[b,word_idx,i]=1
         
-        # Apply masks to flattened_inputs
-        masked_inputs = torch.matmul(masks, flattened_inputs.transpose(0, 1)).transpose(0, 1)
-        
-        # Reshape masked_inputs back to [batch_size, max_len, num_topics]
-        masked_inputs = masked_inputs.view(batch_size, max_len, self.num_topics)
-        
-        # Sum along max_len dimension to get document representation
-        document_representation = torch.sum(masked_inputs, dim=1)  # shape [batch_size, num_topics]
-        
-        # Apply fully connected layer
-        output = self.fc(document_representation)  # shape [batch_size, num_classes]
-        
-        return output
+        max_num_hyperedges = self.num_topics
+        hypergraph = hypergraph.view(batch_size, max_len, max_num_hyperedges)
+        return hypergraph

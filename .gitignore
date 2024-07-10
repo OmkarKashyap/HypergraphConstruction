@@ -1,2 +1,6 @@
 /venv
 /glove
+train.pkl
+test.pkl
+/wandb
+/dataset

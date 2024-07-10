@@ -1,0 +1,8 @@
+loading tokenizer: dataset/Laptops_corenlp/laptop_tokenizer.dat
+loading embedding matrix: dataset/Laptops_corenlp/300d_laptop_embedding_matrix.dat
+Training examples: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2282/2282 [00:00<00:00, 20077.15it/s]
+Training examples: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 632/632 [00:00<00:00, 20461.76it/s]
+Traceback (most recent call last):
+  File "/home/ccbd01/HypergraphConstruction/train_with_wandb.py", line 293, in train_and_evaluate
+    train_dataloader = DataLoader(dataset=trainset, batch_size=config.batch_size, shuffle=True, collate_fn=custom_collate)
+AttributeError: 'NoneType' object has no attribute 'batch_size'

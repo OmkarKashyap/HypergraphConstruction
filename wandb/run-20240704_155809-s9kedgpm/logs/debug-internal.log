@@ -1,0 +1,8 @@
+{"time":"2024-07-04T15:58:09.539036782+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T15:58:09.53904266+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_155809-s9kedgpm/logs/debug-core.log"}
+{"time":"2024-07-04T15:58:09.54364512+05:30","level":"INFO","msg":"created new stream","id":"s9kedgpm"}
+{"time":"2024-07-04T15:58:09.54380015+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"s9kedgpm"}}
+{"time":"2024-07-04T15:58:09.543809617+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"s9kedgpm"}}
+{"time":"2024-07-04T15:58:09.543824715+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"s9kedgpm"}}
+{"time":"2024-07-04T15:58:09.873709345+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-07-04T15:58:09.914157185+05:30","level":"INFO","msg":"Starting system monitor"}

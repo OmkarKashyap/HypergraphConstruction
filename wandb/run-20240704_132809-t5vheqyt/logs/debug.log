@@ -1,0 +1,67 @@
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Current SDK version is 0.17.4
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Configure stats pid to 640271
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Loading settings from /home/ccbd01/.config/wandb/settings
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Loading settings from /home/ccbd01/HypergraphConstruction/wandb/settings
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_require_core': 'true'}
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'train_with_wandb.py', 'program_abspath': '/home/ccbd01/HypergraphConstruction/train_with_wandb.py', 'program': '/home/ccbd01/HypergraphConstruction/train_with_wandb.py'}
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:_log_setup():529] Logging user logs to /home/ccbd01/HypergraphConstruction/wandb/run-20240704_132809-t5vheqyt/logs/debug.log
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:_log_setup():530] Logging internal logs to /home/ccbd01/HypergraphConstruction/wandb/run-20240704_132809-t5vheqyt/logs/debug-internal.log
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:init():569] calling init triggers
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:init():576] wandb.init called with sweep_config: {}
+config: {}
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:init():619] starting backend
+2024-07-04 13:28:09,011 INFO    MainThread:640271 [wandb_init.py:init():623] setting up manager
+2024-07-04 13:28:09,012 INFO    MainThread:640271 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-07-04 13:28:09,012 INFO    MainThread:640271 [wandb_init.py:init():631] backend started and connected
+2024-07-04 13:28:09,013 INFO    MainThread:640271 [wandb_init.py:init():720] updated telemetry
+2024-07-04 13:28:09,015 INFO    MainThread:640271 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2024-07-04 13:28:09,436 INFO    MainThread:640271 [wandb_run.py:_on_init():2402] communicating current version
+2024-07-04 13:28:09,437 INFO    MainThread:640271 [wandb_run.py:_on_init():2411] got version response 
+2024-07-04 13:28:09,437 INFO    MainThread:640271 [wandb_init.py:init():804] starting run threads in backend
+2024-07-04 13:28:09,520 INFO    MainThread:640271 [wandb_run.py:_console_start():2380] atexit reg
+2024-07-04 13:28:09,520 INFO    MainThread:640271 [wandb_run.py:_redirect():2235] redirect: wrap_raw
+2024-07-04 13:28:09,521 INFO    MainThread:640271 [wandb_run.py:_redirect():2300] Wrapping output streams.
+2024-07-04 13:28:09,521 INFO    MainThread:640271 [wandb_run.py:_redirect():2325] Redirects installed.
+2024-07-04 13:28:09,521 INFO    MainThread:640271 [wandb_init.py:init():847] run started, returning control to user process
+2024-07-04 13:28:09,989 INFO    MainThread:640271 [pyagent.py:run():323] Starting sweep agent: entity=None, project=None, count=None
+2024-07-04 13:28:10,738 WARNING MsgRouterThr:640271 [router.py:message_loop():77] message_loop has been closed
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Current SDK version is 0.17.4
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Configure stats pid to 640271
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Loading settings from /home/ccbd01/.config/wandb/settings
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Loading settings from /home/ccbd01/HypergraphConstruction/wandb/settings
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_require_core': 'true', 'project': 'HCNSCAN', 'entity': 'omkar-m-kashyap-PES University', 'root_dir': '/home/ccbd01/HypergraphConstruction', 'sweep_id': '4u805o7m', 'run_id': 'er8lqvjd', 'sweep_param_path': '/home/ccbd01/HypergraphConstruction/wandb/sweep-4u805o7m/config-er8lqvjd.yaml'}
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'train_with_wandb.py', 'program_abspath': '/home/ccbd01/HypergraphConstruction/train_with_wandb.py', 'program': '/home/ccbd01/HypergraphConstruction/train_with_wandb.py'}
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_init.py:_log_setup():529] Logging user logs to /home/ccbd01/HypergraphConstruction/wandb/run-20240704_132815-er8lqvjd/logs/debug.log
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_init.py:_log_setup():530] Logging internal logs to /home/ccbd01/HypergraphConstruction/wandb/run-20240704_132815-er8lqvjd/logs/debug-internal.log
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_init.py:init():569] calling init triggers
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_init.py:init():576] wandb.init called with sweep_config: {'batch_size': 16, 'dropout_rate': 0.2, 'learning_rate': 0.01}
+config: {}
+2024-07-04 13:28:15,622 INFO    Thread-4 (_run_job):640271 [wandb_init.py:init():614] wandb.init() called when a run is still active
+2024-07-04 13:28:15,622 ERROR   Thread-4 (_run_job):640271 [wandb_init.py:init():1191] error in wandb.init()
+Traceback (most recent call last):
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1181, in init
+    return wi.init()
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 615, in init
+    with telemetry.context() as tel:
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/lib/telemetry.py", line 42, in __exit__
+    self._run._telemetry_callback(self._obj)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 798, in _telemetry_callback
+    self._telemetry_flush()
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 809, in _telemetry_flush
+    self._backend.interface._publish_telemetry(self._telemetry_obj)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/interface/interface_shared.py", line 101, in _publish_telemetry
+    self._publish(rec)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/interface/interface_sock.py", line 51, in _publish
+    self._sock_client.send_record_publish(record)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/lib/sock_client.py", line 221, in send_record_publish
+    self.send_server_request(server_req)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/lib/sock_client.py", line 155, in send_server_request
+    self._send_message(msg)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/lib/sock_client.py", line 152, in _send_message
+    self._sendall_with_error_handle(header + data)
+  File "/home/ccbd01/HypergraphConstruction/venv/lib/python3.10/site-packages/wandb/sdk/lib/sock_client.py", line 130, in _sendall_with_error_handle
+    sent = self._sock.send(data)
+BrokenPipeError: [Errno 32] Broken pipe

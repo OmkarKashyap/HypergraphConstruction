@@ -1,0 +1,13 @@
+{"time":"2024-07-04T15:25:58.876275659+05:30","level":"INFO","msg":"using version","core version":"0.17.4"}
+{"time":"2024-07-04T15:25:58.876281774+05:30","level":"INFO","msg":"created symlink","path":"/home/ccbd01/HypergraphConstruction/wandb/run-20240704_152558-d126ptny/logs/debug-core.log"}
+{"time":"2024-07-04T15:25:58.880971288+05:30","level":"INFO","msg":"created new stream","id":"d126ptny"}
+{"time":"2024-07-04T15:25:58.8809895+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"d126ptny"}}
+{"time":"2024-07-04T15:25:58.88099341+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"d126ptny"}}
+{"time":"2024-07-04T15:25:58.880994529+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"d126ptny"}}
+{"time":"2024-07-04T15:25:59.23419277+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-07-04T15:25:59.278116711+05:30","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-07-04T15:26:00.254127178+05:30","level":"INFO","msg":"sender: getServerInfo: got server info","serverInfo":{"cliVersionInfo":{"max_cli_version":"0.17.2","min_cli_version":"0.8.20"},"latestLocalVersionInfo":null}}
+{"time":"2024-07-04T15:26:00.254748848+05:30","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-07-04T15:26:00.25608444+05:30","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-07-04T15:26:05.121349401+05:30","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-07-04T15:26:05.121367954+05:30","level":"INFO","msg":"Stopped system monitor"}

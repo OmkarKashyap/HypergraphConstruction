@@ -16,4 +16,6 @@ optimizers = {
     'adamax': torch.optim.Adamax,
     'asgd': torch.optim.ASGD,
     'lbfgs': torch.optim.LBFGS,
+    'adamw' : torch.optim.AdamW,
+    'rmsprop' : torch.optim.RMSprop
 }

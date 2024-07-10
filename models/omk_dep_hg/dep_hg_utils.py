@@ -123,11 +123,20 @@ class GNNLayer(nn.Module):
         self.args = args
         self.aggregation_type = config.gnn_aggregation_type
         self.linear = nn.Linear(args.dim_in, args.hidden_dim)
-        self.linear2 = nn.Linear(self.args.hidden_dim, self.args.dim_in)
+        self.linear2 = nn.Linear(args.hidden_dim, args.dim_in)
+        self.dropout = nn.Dropout(p=config.dropout_rate)
+        self.norm = nn.LayerNorm(args.dim_in)
+        self.residual=True
         
         if self.aggregation_type == 'attention':
-            self.attention = nn.Linear(args.hidden_dim, 1)
-    
+            self.attention_heads = config.attention_heads
+            self.attention = nn.ModuleList([nn.Linear(2 * args.hidden_dim, 1) for _ in range(self.attention_heads)])
+        
+        
+        if self.residual:
+            self.res_linear = nn.Linear(args.dim_in, args.dim_in)
+            self.res_norm = nn.LayerNorm(args.dim_in)
+
     def forward(self, feats, adj, word_mask):
         batch_size, max_length, _ = feats.size()
 
@@ -135,10 +144,6 @@ class GNNLayer(nn.Module):
         adj = adj.to(self.args.device)
         word_mask = torch.stack(word_mask).to(self.args.device)
         
-        # Ensure the linear layers are on the same device
-        self.linear.to(self.args.device)
-        self.linear2.to(self.args.device)
-
         # Apply linear transformation to node features
         feats_transformed = self.linear(feats)
         
@@ -158,22 +163,51 @@ class GNNLayer(nn.Module):
             feats_aggregated = (feats_transformed * adj_expanded).max(dim=2)[0]
         
         elif self.aggregation_type == 'attention':
-            # Attention Mechanism
-            attn_weights = self.attention(feats_transformed).squeeze(-1)
-            attn_weights = F.softmax(attn_weights.masked_fill(word_mask == 0, -1e9), dim=-1)
-            attn_weights = attn_weights.unsqueeze(-1)
-            feats_aggregated = torch.bmm(adj * attn_weights, feats_transformed)
+            # Attention-based Aggregation
+            attention_scores = []
+            for attention in self.attention:
+                feats_cat = torch.cat([feats_transformed.unsqueeze(1).expand(-1, max_length, -1, -1), feats_transformed.unsqueeze(2).expand(-1, -1, max_length, -1)], dim=-1)
+                scores = attention(feats_cat).squeeze(-1)
+                scores = scores.masked_fill(adj == 0, float('-inf'))
+                scores = F.softmax(scores, dim=-1)
+                attention_scores.append(scores)
+            attention_scores = torch.stack(attention_scores, dim=1).mean(dim=1)
+            feats_aggregated = torch.bmm(attention_scores, feats_transformed)
         
-        # Apply masking to ignore padded nodes
-        feats_aggregated = feats_aggregated * word_mask.unsqueeze(2)
+        # Apply dropout and layer normalization
+        feats_aggregated = self.dropout(feats_aggregated)
+        feats_aggregated = self.linear2(feats_aggregated)
+        feats_aggregated = self.norm(feats_aggregated)
         
-        # Apply non-linearity (e.g., ReLU)
-        feats_aggregated = torch.relu(feats_aggregated)
+        if self.residual:
+            feats_res = self.res_linear(feats)
+            feats_res = self.res_norm(feats_res)
+            feats_aggregated = feats_aggregated + feats_res
         
-        # Apply the second linear transformation
-        feats_out = self.linear2(feats_aggregated)
+        return feats_aggregated
+    
+class GCN(nn.Module):
+    def __init__(self, args, config):
+        super(GCN, self).__init__()
+        self.args = args
+        self.num_layers = config.n_layers
         
-        return feats_out
+        # Initialize multiple GNN layers
+        self.gnn_layers = nn.ModuleList([GNNLayer(args, config) for _ in range(self.num_layers)])
+        self.dropout = nn.Dropout(p=config.dropout_rate)
+        
+    def forward(self, feats, adj, word_mask):
+        out = feats
+        
+        for layer in self.gnn_layers:
+            residual = out  # Capture the current state of out for residual connection
+            out = layer(out, adj, word_mask)
+            
+            # Apply residual connection before non-linearity
+            out = F.relu(out + residual)
+            out = self.dropout(out)
+        
+        return out
 
 class CommunityDetection(object):
     def __init__(self, args):

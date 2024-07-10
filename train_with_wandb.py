@@ -152,6 +152,13 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         outputs = outputs.squeeze(0)
         loss = criterion(outputs, targets)
 
+        # Calculate L2 regularization
+        l2_reg = torch.tensor(0., device=device)
+        for param in model.parameters():
+            l2_reg += torch.norm(param, p=2)**2
+            
+        loss += args.lambda_reg * l2_reg
+
         loss.backward()
         optimizer.step()
 
@@ -326,39 +333,41 @@ def main():
         'method': 'bayes',
         'parameters': {
             'optim' : {
-                'values' : ['adagrad', 'adamw', 'rmsprop']
+                'values' : ['rmsprop']
             },
             'epochs' : {
                 'values' : [30, 40]
             },
             'learning_rate': {
-                'values': [ 0.001, 0.0001]
+                'values': [ 0.0001, 0.00005, 0.00001]
             },
             'batch_size': {
                 'values': [64]
             },
             'dropout_rate': {
-                'values': [0.3, 0.4 ]
+                'values': [0.3]
             },
             'min_samples': {
-                'values' : [3, 4, 5]
+                'values' : [4]
             },
             'eps' : {
-                'values' : [0.001, 0.01 , 0.05, 0.1]
+                'values' : [0.01]
             },
             'top_k':{
-                'values' : [2,3,4]
+                'values' : [4,5]
             },
             'num_topics' : {
-                'values' : [30, 40, 50]
+                'values' : [50, 60, 70]
             },
             'n_layers' : {
-                'values' : [2, 3]
+                'values' : [5,4, 3, 2]
             },
             'gnn_aggregation_type' : {
-                'values' : ['sum', 'mean']
+                'values' : ['mean', 'sum', 'max', 'attention']
             },
-            
+            # 'attention_heads' : {
+            #     'values' : [8,4,2,1]
+            # },
             
         },
         'metric': {
@@ -367,7 +376,7 @@ def main():
         }
     }
 
-    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-final")
+    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-with-norm-and-aspect")
     
     dataset_files = {
         'restaurant': {
@@ -392,13 +401,13 @@ def main():
     parser.add_argument('--seed', type=int, default=1234, help='Set the Random Seed')
     parser.add_argument('--gpus', default='', type=str, help='Use CUDA on the listed devices.')
     parser.add_argument('--parallel', action='store_true', help='Use to train on multiple GPUs simultaneously')
-    parser.add_argument('--dataset', default='laptop', type=str, help=', '.join(dataset_files.keys()))
-    parser.add_argument('--max_length', default=85, type=int)
+    parser.add_argument('--dataset', default='restaurant', type=str, help=', '.join(dataset_files.keys()))
+    parser.add_argument('--max_length', default=90, type=int)
     parser.add_argument('--extra_padding', default=0, type=int)
     parser.add_argument('--vocab_dir', type=str, default='dataset/Laptops_corenlp')
     parser.add_argument('--embed_dim', default=300, type=int)
     parser.add_argument('--pad_id', default=-1, type=int)
-    parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--num_epoch', default=20, type=int)
     parser.add_argument('--log_step', default=5, type=int, help='Logs state after set number of epochs')
     parser.add_argument('--learning_rate', default=0.001, type=float)
@@ -417,6 +426,8 @@ def main():
     parser.add_argument('--tensorboard_log_dir', type=str, default='model_state_params')
 
     parser.add_argument('--gnn_aggregation_type', choices=['sum', 'mean', 'max', 'attention'], default='attention')
+    parser.add_argument('--attention_heads', default=4)
+    parser.add_argument('--lambda_reg', default=0.001)
 
     parser.add_argument('--louvain_threshold', default=0.5)
     parser.add_argument('--louvain_max_communities', default=5)

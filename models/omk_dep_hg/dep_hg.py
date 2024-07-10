@@ -3,7 +3,7 @@ import torch.nn as nn
 import networkx as nx
 import numpy as np
 
-from models.omk_dep_hg.dep_hg_utils import DependencyGraph, GNNLayer, CommunityDetection
+from models.omk_dep_hg.dep_hg_utils import DependencyGraph, GNNLayer, CommunityDetection, GCN
 
 class DependencyHG(nn.Module):
     def __init__(self, args, config):
@@ -11,7 +11,7 @@ class DependencyHG(nn.Module):
         
         self.args =args
         self.graph_model = DependencyGraph(args)
-        self.gnn = GNNLayer(args, config)
+        self.gcn = GCN(args, config)
         self.community = CommunityDetection(args)
         
     def forward(self, inputs):
@@ -25,7 +25,7 @@ class DependencyHG(nn.Module):
         # Process through graph model and GNN layer
         adj = self.graph_model(inputs)
         adj = adj.to(self.args.device)  # Ensure adj is on the same device
-        out = self.gnn(feats, adj, word_mask)
+        out = self.gcn(feats, adj, word_mask)
         out = out.to(self.args.device)
         # Community detection
         communities, incidence_matrix = self.community.louvain(adj, out, tokens, text_list, word_mask)

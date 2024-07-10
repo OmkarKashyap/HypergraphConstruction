@@ -3,7 +3,7 @@ import torch.nn as nn
 import networkx as nx
 import numpy as np
 
-from models.omk_dep_hg.dep_hg_utils import DependencyGraph, GNNLayer, CommunityDetection
+from models.omk_dep_hg.dep_hg_utils import DependencyGraph, GNNLayer, CommunityDetection, GCN
 
 class DependencyHG(nn.Module):
     def __init__(self, args, config):
@@ -11,7 +11,7 @@ class DependencyHG(nn.Module):
         
         self.args =args
         self.graph_model = DependencyGraph(args)
-        self.gnn = GNNLayer(args, config)
+        self.gnn = GCN(args, config)
         self.community = CommunityDetection(args)
         
     def forward(self, inputs):

@@ -21,6 +21,7 @@ import utils.optims as Optim
 import utils.criterion as Criterion
 import utils.lr_scheduler as L
 from sklearn import metrics
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from data_utils.prepare_vocab import VocabHelp
 from data_utils.data_utils import SentenceDataset, build_embedding_matrix, build_tokenizer, Seq2Feats
@@ -38,6 +39,25 @@ warnings.filterwarnings('ignore')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+class EarlyStopping:
+    def __init__(self, patience=10, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.best_score = None
+        self.counter = 0
+        self.early_stop = False
+
+    def __call__(self, score):
+        if self.best_score is None:
+            self.best_score = score
+        elif score < self.best_score + self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.counter = 0
 
 def pad_incidence_matrix(inc_mat, max_edges):
     current_edges = inc_mat.size(1)
@@ -103,7 +123,7 @@ def save_model(model, path, optimizer, gpus, args, updates=None):
         'updates': updates}
     torch.save(checkpoints, path)
 
-def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch, max_test_acc_overall=0, max_f1 = 0, max_test_acc = 0,step_counter = 0 ):
+def train(model, train_dataloader, criterion, optimizer, scheduler, args, test_dataloader, embedding_matrix, epoch, max_test_acc_overall=0, max_f1 = 0, max_test_acc = 0,step_counter = 0,  early_stopping=None):
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     model.train()
@@ -152,6 +172,11 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         outputs = outputs.squeeze(0)
         loss = criterion(outputs, targets)
 
+        # Calculate L2 Regularization
+        l2_lambda = args.lambda_reg
+        l2_norm = sum(p.pow(2.0).sum() for p in model.parameters())
+        loss = loss + l2_lambda * l2_norm
+
         loss.backward()
         optimizer.step()
 
@@ -171,10 +196,15 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
             if f1 > max_f1:
                 max_f1 = f1
 
-            
-
             logger.info('loss: {:.4f}, acc: {:.4f}, test_loss: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(
                 loss.item(), n_correct / n_total, test_loss, test_acc, f1))
+            
+            # Early stopping check
+            if early_stopping:
+                early_stopping(test_loss)
+                if early_stopping.early_stop:
+                    logger.info("Early stopping")
+                    break
 
     avg_train_loss = epoch_train_loss / len(train_dataloader)
     avg_train_acc = n_correct / n_total
@@ -190,6 +220,7 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
     #             'epoch': epoch
     #         })
     
+    scheduler.step()
 
     return max_test_acc, max_f1, model_path
 
@@ -298,16 +329,21 @@ def train_and_evaluate(config=None):
         embedding_matrix_copy = embedding_matrix.clone()
         model = HGSCAN(args, config)
 
-        optimizer = Optim.optimizers[config.optim](model.parameters(), config.learning_rate)
+        optimizer = Optim.optimizers[config.optim](model.parameters(), lr =config.learning_rate, weight_decay = 0.01)
         criterion = Criterion.criterion[args.criterion]
+
+        scheduler = CosineAnnealingLR(optimizer, T_max=args.T_max, eta_min = args.eta_min) 
 
         model.to(device)
         criterion.to(device)
 
+        early_stopping = EarlyStopping(patience=10, min_delta=0.001)
+
 
         for epoch in tqdm(range(config.epochs)):
-            max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch)
+            max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch, early_stopping=early_stopping)
             wandb.log({'f1_score': max_f1})
+            wandb.log({'test_accuracy' : max_test_acc})
 
         return max_test_acc, max_f1
 
@@ -319,6 +355,13 @@ def test(model, test_dataloader, args, embedding_matrix):
     logger.info(test_report)
     logger.info("Confusion Matrix...")
     logger.info(test_confusion)
+    wandb.log({
+        'Precision' : test_report['precision'],
+        "Recall" : test_report['recall'],
+        'F1-Score' : test_report['f1-score'],
+        "Accuracy" : acc,
+        "Confusion Matrix" : wandb.plot.confusion_matrix(probs=None, y_true=test_confusion['true'], preds=test_confusion['pred'], class_names=test_confusion['labels'])
+    })
 
 def main():
     # wandb.init(project='HCNSCAN-trial', name='training-example')  # Initialize wandb
@@ -326,48 +369,59 @@ def main():
         'method': 'bayes',
         'parameters': {
             'optim' : {
-                'values' : ['adagrad', 'adamw', 'rmsprop']
+                'values' : ['lbfgs', 'asgd', 'rmsprop']
             },
             'epochs' : {
-                'values' : [30, 40]
+                'values' : [100]
             },
             'learning_rate': {
                 'values': [ 0.001, 0.0001]
             },
             'batch_size': {
-                'values': [64]
+                'values': [16]
             },
             'dropout_rate': {
-                'values': [0.3, 0.4 ]
+                'values': [0, 0.3]
             },
             'min_samples': {
                 'values' : [3, 4, 5]
             },
             'eps' : {
-                'values' : [0.001, 0.01 , 0.05, 0.1]
+                'values' : [0.1, 0.15, 0.2]
             },
             'top_k':{
-                'values' : [2,3,4]
+                'values' : [4,5,6]
             },
             'num_topics' : {
                 'values' : [30, 40, 50]
             },
             'n_layers' : {
-                'values' : [2, 3]
+                'values' : [1, 2, 3]
             },
             'gnn_aggregation_type' : {
-                'values' : ['sum', 'mean']
+                'values' : ['sum', 'mean', 'attention']
             },
-            
+            'attention_heads': {
+                'values' : [1, 2]
+            },
+            'num_gnn_layers':{
+                'values' : [1,2]
+            }
             
         },
         'metric': {
             'name': 'f1_score',
             'goal': 'maximize'
+        },
+        'secondary_metrics': [
+        {
+            'name': 'test_accuracy',
+            'goal': 'maximize'
         }
+    ]
     }
 
-    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-final")
+    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-with-norm-and-aspect")
     
     dataset_files = {
         'restaurant': {
@@ -417,6 +471,10 @@ def main():
     parser.add_argument('--tensorboard_log_dir', type=str, default='model_state_params')
 
     parser.add_argument('--gnn_aggregation_type', choices=['sum', 'mean', 'max', 'attention'], default='attention')
+    parser.add_argument('--T_max', default=14250, type=int)
+    parser.add_argument('--eta_min', default=1e-5, type=float)
+    parser.add_argument('--lambda_reg', default = 1e-5, type=float)
+    parser.add_argument('--attention_heads', default=1)
 
     parser.add_argument('--louvain_threshold', default=0.5)
     parser.add_argument('--louvain_max_communities', default=5)

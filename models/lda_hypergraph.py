@@ -16,8 +16,13 @@ class SemanticHypergraphModel(nn.Module):
         self.word_dimension = args.dim_in
         self.num_classes = args.n_categories
         self.top_k = config.top_k
+
         self.topic_vectors = nn.Parameter(torch.randn(self.num_topics, self.word_dimension))
+        nn.init.xavier_uniform_(self.topic_vectors)  # Xavier initialization for topic_vectors
+
         self.fc = nn.Linear(self.num_topics, self.num_classes)
+        nn.init.xavier_uniform_(self.fc.weight)  # Xavier initialization for fc layer
+
         
     def forward(self, inputs):
         inputs = inputs[0]

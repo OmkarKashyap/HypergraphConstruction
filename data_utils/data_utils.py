@@ -412,7 +412,7 @@ from nltk.corpus import stopwords
 import string
 import torch
 import torch.nn as nn 
-
+import math
 
 def ParseData(data_path):
     with open(data_path) as infile:
@@ -585,13 +585,17 @@ class SentenceDataset(Dataset):
         
         self.construct = HGConstruct(args, config)
         self.embedding = nn.Embedding.from_pretrained(embedding_matrix, freeze=True, padding_idx=0)
+
+        self.positional_encoding = PositionalEncoding(d_model = embedding_matrix.size(1), max_len = args.max_length)
+        self.multi_head_attention = nn.MultiheadAttention(embed_dim = embedding_matrix.shape[1], num_heads=5, batch_first=True )
+        
         parse = ParseData
         post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab = vocab_help
         data = list()
         polarity_dict = {'positive':0, 'negative':1, 'neutral':2}
         for obj in tqdm(parse(fname), total=len(parse(fname)), desc="Training examples"):
-            text_list = obj['text_list']            
-            plain_text = obj['text']
+            text_list = obj['text_list'] + [obj['aspect']]           
+            plain_text = obj['text'] + obj['aspect']
             text = tokenizer.text_to_sequence(obj['text'])
 
             text_temp = text.copy()
@@ -602,14 +606,32 @@ class SentenceDataset(Dataset):
             text_tensor = torch.as_tensor(updated_token_ids, dtype=torch.int64)
             
             x = self.embedding(text_tensor)
+            x = self.positional_encoding(x)
+
+            aspect_text = tokenizer.text_to_sequence(obj['aspect'])  
+            aspect_text = [0 if x==-1 else x for x in aspect_text]
+            aspect_tensor = tokenizer.pad_sequence(aspect_text, pad_id=0, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
+            aspect_tensor = torch.as_tensor(aspect_tensor, dtype=torch.int64)
+            
+            aspect_embedding = self.embedding(aspect_tensor)
+            aspect_embedding = self.positional_encoding(aspect_embedding)
+
+            word_mask = [i < len(obj['mask']) for i in range(args.max_length)]
+            attn_mask = torch.tensor(word_mask, dtype=torch.bool).unsqueeze(0).to(torch.float32)
+
+            x=x.to(torch.float32)
+            aspect_embedding = aspect_embedding.to(torch.float32)
+            attn_mask = attn_mask.to(torch.bool)
+
+            x, attn_output_weights = self.multi_head_attention(query=aspect_embedding, key=x, value=x, key_padding_mask =attn_mask)
+
+            x_detached = x.detach().squeeze(0)
             if not inc_exists:
-                incidence_matrix = self.construct.cluster(x)
+                incidence_matrix = self.construct.cluster(x_detached)
                 self.incidences.append(incidence_matrix)
                 i += 1
             text = tokenizer.pad_sequence(text, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
 
-            aspect = tokenizer.text_to_sequence(obj['aspect'])  
-            aspect = tokenizer.pad_sequence(aspect, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
             
             pos = [pos_vocab.stoi.get(t, pos_vocab.unk_index) for t in obj['pos']]
             pos = tokenizer.pad_sequence(pos, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
@@ -638,7 +660,7 @@ class SentenceDataset(Dataset):
             
             data.append({
                 'text': text, 
-                'aspect': aspect, 
+                'aspect': aspect_tensor, 
                 'pos': pos,
                 'post': post,
                 'head':head,
@@ -786,3 +808,17 @@ class Seq2Feats(nn.Module):
     def remove_trailing_zeros(self, tensor):
         last_non_zero_idx = (tensor != 0).nonzero(as_tuple=False).max()
         return len(tensor[:last_non_zero_idx + 1])
+    
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000) -> None:
+        super(PositionalEncoding, self).__init__()
+
+        self.encoding = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        self.encoding[:, 0::2] = torch.sin(position * div_term)
+        self.encoding[:, 1::2] = torch.cos(position * div_term)
+        self.encoding = self.encoding.unsqueeze(0)
+
+    def forward(self, x):
+        return x + self.encoding[:, :x.size(1), :].to(x.device)

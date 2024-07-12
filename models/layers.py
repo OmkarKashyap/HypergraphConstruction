@@ -4,76 +4,21 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from models.omk_dep_hg.dep_hg import DependencyHG
 from models.lda_hypergraph import SemanticHypergraphModel
+from models.knn_hg import KNNHG
 
 class HGConstruct(nn.Module):
     def __init__(self,args, config) -> None:
         super(HGConstruct, self). __init__()
         self.args=args
-        self.eps = config.eps
-        self.min_samples = config.min_samples
         self.clusters = None
-        self.dep = DependencyHG(args, config)
-        self.lda = SemanticHypergraphModel(args, config)
+        self.knnhg =KNNHG(args, config)
         # self.attention_context_vector = nn.Parameter(torch.empty(self.output_size))
 
-
-    def make_incidence_matrix(self, hyperedges, n, nc):
-        '''
-        returns incidence matrix from the clusters in DBSCAN
-        :param hyperedges: List[nodes in each hyperedge]
-        :param n: number of nodes
-        :param nc: number of clusters
-        '''
-        incidence_matrix = torch.zeros(n, nc, dtype=torch.float)
-
-        # Populate the incidence matrix
-        for cluster_idx, cluster in enumerate(hyperedges):
-            for node_idx in cluster:
-                incidence_matrix[node_idx, cluster_idx] = 1.0
+    def forward(self, inputs):
+        knn_hg = self.knnhg(inputs).to(self.args.device)
         
-        return incidence_matrix
-
-    def cluster(self, features):
-        '''
-        perform DBSCAN over the nodes, one dimension at a time.
-        return an incidence matrix with each cluster as a hyperedge.
-        :param ids: indices selected during train/valid/test, torch.LongTensor.
-        :param features: assumed it is a tensor. (N, k, d)
-        '''
-        print(features.shape)
-        num_nodes = features.size()[0]
-        dim_len = features.size()[1]
-        num_clusters = 0
-        hyperedges = []
-
-        for dim in range(dim_len):
-            # print(features.squeeze(0)[:,dim].reshape(-1, 1).shape)\
-            # reshaped_tensor = features.view(85, 1)
-            # print(reshaped_tensor.shape)
-            current_dim_emb = features.squeeze(0)[:,dim].reshape(-1, 1)
-            db = DBSCAN(eps=self.eps, min_samples=self.min_samples)
-            labels = db.fit_predict(current_dim_emb)
-            unique_labels = set(labels)
-            if -1 in unique_labels:
-                unique_labels.remove(-1)
-            clusters_now = len(unique_labels)
-            dim_clusters = [np.where(labels == label)[0].tolist() for label in unique_labels]
-            num_clusters += clusters_now
-            if dim_clusters:
-                hyperedges.extend(dim_clusters)
-    
-        incidence_matrix = self.make_incidence_matrix(hyperedges, num_nodes, num_clusters)
-    # batch_incidence_matrix = torch.stack(batch_incidence_matrix)
-        return incidence_matrix
-
-    def forward(self, inputs, inc_mat):
-        lda_hg = self.lda(inputs).to(self.args.device)
-        dep_hg = self.dep(inputs).to(self.args.device)
-        inc_mat = inc_mat.to(self.args.device)
-        final_inc = torch.cat((dep_hg, inc_mat, lda_hg), dim=2)
-        return final_inc
+        return knn_hg
 
 class VertexConv(nn.Module):
     def __init__(self, args, in_feats, out_feats):
@@ -197,41 +142,39 @@ class MessagePassing(nn.Module):
     def __init__(self, args, config) -> None:
         super().__init__()
         self.dim_in = args.dim_in
-        self.hidden_num = args.hidden_num
         self.num_layers = config.n_layers
         self.vc = VertexConv(args, self.dim_in, self.dim_in)
         self.construct = HGConstruct(args, config)
         self.ec = EdgeConv(args, self.dim_in, self.dim_in)
     
-    def forward(self, inputs, inc_mat):
+    def forward(self, inputs):
         # features = features.squeeze(0)
-        inc_mat = self.construct(inputs, inc_mat)
         features = inputs[0]
-        edge_feats = self.vc(features, inc_mat)
-        node_feats = self.ec(inc_mat, edge_feats, features)
+        edge_feats = self.vc(features)
+        node_feats = self.ec(edge_feats, features)
         for _ in range(1, self.num_layers):
             
-            edge_feats = self.vc(features, inc_mat, edge_feats)
-            node_feats = self.ec(inc_mat, edge_feats, node_feats)
+            edge_feats = self.vc(features, edge_feats)
+            node_feats = self.ec(edge_feats, node_feats)
         
-        return node_feats, edge_feats, inc_mat
+        return node_feats, edge_feats
 
 class HGConv(nn.Module):
-    def  __init__(self, args) -> None:
+    def  __init__(self, args, config) -> None:
         super(). __init__()
         self.args=args
         self.dim_in = args.dim_in
         self.n_categories = args.n_categories  # Number of output categories
         self.has_bias = True  # Whether to use bias in the fc layer
-        self.dropout = nn.Dropout(args.dropout_rate)
+        self.dropout = nn.Dropout(config.dropout_rate)
         self.vc = VertexConv(args, self.dim_in, self.dim_in)
         self.ec = HypergraphEdgeAggregation(args, self.dim_in, self.dim_in)
         self.fc = nn.Linear(self.dim_in, self.n_categories, bias=self.has_bias)
         self.activation = nn.LogSoftmax(dim=-1)  # Activation function for the output layer
     
-    def forward(self, node_feats, edge_feats, inc_mat):
+    def forward(self, node_feats, edge_feats):
         self.fc=self.fc.to(self.args.device)
-        edge_feat = self.vc(node_feats, inc_mat, edge_feats)
+        edge_feat = self.vc(node_feats, edge_feats)
         logits = self.ec(edge_feat)
         logits = self.fc((logits))
         return logits
@@ -240,11 +183,11 @@ class HGScanLayer(nn.Module):
     def __init__(self, args, config) -> None:
         super().__init__()
         self.msg_pass = MessagePassing(args, config)
-        self.conv = HGConv(args)
+        self.conv = HGConv(args, config)
     
-    def forward(self, inputs, inc_mat):
-        node_feats, edge_feats, inc_mat = self.msg_pass(inputs, inc_mat)
-        logits = self.conv(node_feats, edge_feats, inc_mat)
+    def forward(self, inputs):
+        node_feats, edge_feats = self.msg_pass(inputs)
+        logits = self.conv(node_feats, edge_feats)
         return logits
 
 

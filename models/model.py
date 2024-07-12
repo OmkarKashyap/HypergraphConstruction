@@ -25,13 +25,13 @@ from models.layers import *
 class HGSCAN(nn.Module):
     def __init__(self, args, config) -> None:
         super().__init__()
-        self.n_layers = args.n_layers
+        
         self.dropout = nn.Dropout(config.dropout_rate)
         # self.hgl = [HGScanLayer() for i in range(self.n_layers)]
         self.hgl = HGScanLayer(args, config)
     
-    def forward(self, inputs, inc_mat):
+    def forward(self, inputs):
         # x = features
-        x = self.hgl(inputs, inc_mat)
+        x = self.hgl(inputs)
         x = self.dropout(x)  # Apply dropout after each layer
         return x.unsqueeze(0)

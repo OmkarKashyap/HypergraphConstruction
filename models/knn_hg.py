@@ -14,6 +14,7 @@ class KNNHG(nn.Module):
         self.dropout = nn.Dropout(config.dropout_rate)
 
     def forward(self, x_complete):
+        print(len(x_complete))
         x, text, aspect, pos_mask, word_mask, aspect_post_start, aspect_post_end, plain_text, text_list = x_complete
         
         hypergraph = self.generate_knn_hypergraph(x)
@@ -21,6 +22,9 @@ class KNNHG(nn.Module):
         return hypergraph
 
     def generate_knn_hypergraph(self, embedded):
+        # print(type(embedded))
+        # print(embedded)
+        # print(embedded[0])
         batch_size, seq_len, embed_dim = embedded.shape
         
         # Reshape for KNN

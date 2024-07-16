@@ -434,7 +434,8 @@ def pad_incidence_matrix(inc_mat, max_edges):
 def custom_collate(batch):
     device = 'cpu' if torch.cuda.is_available() else 'cpu'
 
-    x_batch = [torch.as_tensor(item['x'], dtype=torch.int64).to(device) for item in batch]
+    x_batch = [torch.as_tensor(item['x'], dtype=torch.float32).to(device) for item in batch]
+    x_batch = torch.stack(x_batch)
     text_batch = [torch.as_tensor(item['text'], dtype=torch.int64).to(device) for item in batch]
     aspect_batch = [torch.as_tensor(item['aspect'], dtype=torch.int64).to(device) for item in batch]
     polarity_batch = [torch.as_tensor(item['polarity'], dtype=torch.int64).to(device) for item in batch]
@@ -468,7 +469,7 @@ def save_model(model, path, optimizer, gpus, args, updates=None):
         'updates': updates}
     torch.save(checkpoints, path)
 
-def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch, max_test_acc_overall=0, max_f1 = 0, max_test_acc = 0,step_counter = 0 ):
+def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, epoch, max_test_acc_overall=0, max_f1 = 0, max_test_acc = 0,step_counter = 0 ):
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     model.train()
@@ -479,13 +480,13 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
     for i_batch, batch in enumerate(train_dataloader):
         step_counter += 1
 
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        tokens = tokenizer(batch['plain_text'], return_tensors='pt', padding=True, truncation=True, max_length=args.max_length)
-        bert_model = BertModel.from_pretrained('bert-base-uncased')
-        x = bert_model(**tokens).last_hidden_state
-        if x.shape[1] < args.max_length:
-            padding_length = args.max_length - x.shape[1]
-            x = torch.nn.functional.pad(x, (0, 0, 0, padding_length))
+        # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        # tokens = tokenizer(batch['plain_text'], return_tensors='pt', padding=True, truncation=True, max_length=args.max_length)
+        # bert_model = BertModel.from_pretrained('bert-base-uncased')
+        # x = bert_model(**tokens).last_hidden_state
+        # if x.shape[1] < args.max_length:
+        #     padding_length = args.max_length - x.shape[1]
+        #     x = torch.nn.functional.pad(x, (0, 0, 0, padding_length))
 
         x_complete = [
             batch['x'],
@@ -498,7 +499,7 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
             batch['plain_text'],
             batch['text_list'],
         ]
-        print(x_complete)
+        print("Length:", len(batch['x']))
 
         targets = batch['polarity']
         targets = torch.tensor([t.item() for t in targets]).to(device)
@@ -516,7 +517,7 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         epoch_train_loss += loss.item()
 
         if step_counter % args.log_step == 0:
-            test_acc, test_loss, f1 = evaluate(model, test_dataloader, criterion, args, embedding_matrix)
+            test_acc, test_loss, f1 = evaluate(model, test_dataloader, criterion, args)
             if test_acc > max_test_acc:
                 max_test_acc = test_acc
                 if test_acc > max_test_acc_overall:
@@ -541,7 +542,7 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
     return max_test_acc, max_f1, model_path
 
 
-def evaluate(model, test_dataloader, criterion, args, embedding_matrix, show_results=False):
+def evaluate(model, test_dataloader, criterion, args, show_results=False):
     model.eval()
 
     n_test_correct, n_test_total = 0, 0
@@ -623,16 +624,16 @@ def train_and_evaluate(config=None):
 
 
         for epoch in tqdm(range(config.epochs)):
-            max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch)
+            max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader, epoch)
             wandb.log({'f1_score': max_f1,
                        'max_text_acc':max_test_acc},)
 
         return max_test_acc, max_f1
 
 
-def test(model, test_dataloader, args, embedding_matrix):
+def test(model, test_dataloader, args):
     model.eval()
-    test_report, test_confusion, acc, f1 = evaluate(model, test_dataloader, args, embedding_matrix, show_results=True)
+    test_report, test_confusion, acc, f1 = evaluate(model, test_dataloader, args, show_results=True)
     logger.info("Precision, Recall and F1-Score...")
     logger.info(test_report)
     logger.info("Confusion Matrix...")
@@ -644,10 +645,10 @@ def main():
         'method': 'bayes',
         'parameters': {
             'optim' : {
-                'values' : ['adagrad', 'adamw', 'rmsprop']
+                'values' : ['rmsprop']
             },
             'epochs' : {
-                'values' : [30, 40, 50, 60,100]
+                'values' : [30]
             },
             'learning_rate': {
                 'values': [ 0.001, 0.0001]
@@ -716,7 +717,7 @@ def main():
     parser.add_argument('--eps', default=0.01)
     parser.add_argument('--min_samples', default=3)
     parser.add_argument('--output_size', default=10)
-    parser.add_argument('--dim_in', default=300)
+    parser.add_argument('--dim_in', default=768)
     parser.add_argument('--hidden_num', default=5)
     parser.add_argument('--ft_dim', default=300)
     parser.add_argument('--n_categories', default=3)

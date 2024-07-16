@@ -16,6 +16,8 @@ class HGConstruct(nn.Module):
         # self.attention_context_vector = nn.Parameter(torch.empty(self.output_size))
 
     def forward(self, inputs):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.args.device = device
         knn_hg = self.knnhg(inputs).to(self.args.device)
         
         return knn_hg
@@ -37,9 +39,10 @@ class VertexConv(nn.Module):
         b, m, d = feature_mat.size()
         b, _, e = inc_mat.size()
 
-        self.attention = self.attention.to(self.args.device)
+        self.attention = self.attention.to(self.args.device) 
         self.projection=self.projection.to(self.args.device)
         # Compute attention scores for each node for each edge
+        print(feature_mat.shape)
         node_attention_scores = self.attention(feature_mat) # (m x out_feats)
 
         # Compute attention scores for each edge by aggregating node scores
@@ -87,19 +90,24 @@ class EdgeConv(nn.Module):
 
         # Aggregate edge attention scores to get node attention scores
         # node_attention_scores = inc_mat @ edge_attention_scores  
-        node_attention_scores = torch.matmul(inc_mat, edge_attention_scores) # (m x out_feats)
+        node_attention_scores = torch.bmm(inc_mat, edge_attention_scores) # (m x out_feats)
 
         # Apply softmax to get attention weights for each node
         attention_weights = F.softmax(node_attention_scores, dim=1)  # (m x out_feats)
 
         # Weighted aggregation of edge features to get new node features
-        weighted_edge_features = torch.einsum('bed,bme->bmd', edge_features, inc_mat)  # (m x d)
+        weighted_edge_features = torch.einsum('bed,bme->bmed', edge_features, inc_mat)  # (b x m x e x d)
+
+        # Aggregate weighted edge features to get node features
+        edge_features = torch.einsum('bmed,bmd->bmd', weighted_edge_features, attention_weights)  # (b x m x d)
 
         # Project aggregated node features to the output dimension
-        node_features = self.projection(weighted_edge_features)  # (m x out_feats)
+        node_features = self.projection(edge_features)  # (b x m x out_feats)
 
         # If previous node features are provided, combine them with the new ones based on alpha
         if prev_node_features is not None:
+            print("Node:", node_features.shape)
+            print("Previous Node:", prev_node_features.shape)
             node_features = self.alpha * prev_node_features + (1 - self.alpha) * node_features
 
         return node_features
@@ -150,12 +158,13 @@ class MessagePassing(nn.Module):
     def forward(self, inputs):
         # features = features.squeeze(0)
         features = inputs[0]
-        edge_feats = self.vc(features)
-        node_feats = self.ec(edge_feats, features)
+        inc_mat = self.construct(inputs)
+        edge_feats = self.vc(features, inc_mat)
+        node_feats = self.ec(inc_mat, edge_feats, features)
         for _ in range(1, self.num_layers):
             
-            edge_feats = self.vc(features, edge_feats)
-            node_feats = self.ec(edge_feats, node_feats)
+            edge_feats = self.vc(node_feats, inc_mat, edge_feats)
+            node_feats = self.ec(inc_mat, edge_feats, node_feats)
         
         return node_feats, edge_feats
 

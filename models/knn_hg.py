@@ -8,8 +8,8 @@ class KNNHG(nn.Module):
         super(KNNHG, self).__init__()
         self.args = args
         
-        self.k = config.top_k  # number of nearest neighbors
-        self.fc = nn.Linear(args.hidden_dim, args.n_categories)
+        self.k = config.top_k_knn  # number of nearest neighbors
+        self.fc = nn.Linear(args.dim_in, args.n_categories)
         
         self.dropout = nn.Dropout(config.dropout_rate)
 

@@ -35,3 +35,7 @@ class HGSCAN(nn.Module):
         x = self.hgl(inputs)
         x = self.dropout(x)  # Apply dropout after each layer
         return x.unsqueeze(0)
+    
+    @property
+    def hypergraph(self):
+        return self.model.hgl.msg_pass.hypergraph

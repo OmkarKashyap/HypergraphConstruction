@@ -41,7 +41,7 @@ from scipy.stats import entropy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from proof import calculate_information_content, generate_random_hypergraph
+from proof import Proof1, verify_lemma_1
 
 wandb.require("core")
 wandb.login()
@@ -216,6 +216,9 @@ def train(model, train_dataloader, criterion, optimizer, scheduler, args, config
         x = prepare_input_data(batch, args, config)
         
         outputs = model(x)
+            
+        proof, lemma_result = verify_lemma_1(model, epoch, args, config, proof)
+        
         outputs = outputs.squeeze(0)
         
         targets = batch['polarity'].to(device)

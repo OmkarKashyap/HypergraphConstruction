@@ -233,15 +233,12 @@ def pad_sequence(sequence, pad_id, maxlen, dtype=torch.int64, padding='post', tr
 
 class SentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
-    def __init__(self, fname, args, config, vocab_help):
-        self.stop_words = set(stopwords.words('english'))
-        self.punctuation = set(string.punctuation)
+    def __init__(self, fname, args, config):
 
         self.pad_id = args.pad_id
         self.max_length = args.max_length
         
         parse = ParseData
-        post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab = vocab_help
         data = list()
         polarity_dict = {'positive': 0, 'negative': 1, 'neutral': 2}
         

@@ -154,11 +154,12 @@ class MessagePassing(nn.Module):
         self.vc = VertexConv(args, self.dim_in, self.dim_in)
         self.construct = HGConstruct(args, config)
         self.ec = EdgeConv(args, self.dim_in, self.dim_in)
-    
+        self.hypergraph = None
     def forward(self, inputs):
         # features = features.squeeze(0)
         features = inputs[0]
         inc_mat = self.construct(inputs)
+        self.hypergraph = inc_mat
         edge_feats = self.vc(features, inc_mat)
         node_feats = self.ec(inc_mat, edge_feats, features)
         for _ in range(1, self.num_layers):

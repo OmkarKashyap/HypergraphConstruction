@@ -153,10 +153,11 @@ def calculate_flops(model, args,config):
 
 
 def custom_collate(batch):
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = 'cpu' if torch.cuda.is_available() else 'cpu'
 
     x_batch = [torch.as_tensor(item['x'], dtype=torch.float32).to(device) for item in batch]
     x_batch = torch.stack(x_batch)
+
     text_batch = [torch.as_tensor(item['text'], dtype=torch.int64).to(device) for item in batch]
     aspect_batch = [torch.as_tensor(item['aspect'], dtype=torch.int64).to(device) for item in batch]
     polarity_batch = [torch.as_tensor(item['polarity'], dtype=torch.int64).to(device) for item in batch]
@@ -681,14 +682,14 @@ def main():
                 'values' : ['rmsprop']
             },
             'epochs' : {
-                'values' : [30, 40]
+                'values' : [30]
             },
             'learning_rate': {'min': 1e-5, 'max': 1e-2},
             'batch_size': {
                 'values': [64]
             },
             'dropout_rate': {
-                'values': [0.3, 0.4 ]
+                'values': [0.1, 0.2, 0.3]
             },
             'top_k_knn':{
                 'values' : [2,3,4]

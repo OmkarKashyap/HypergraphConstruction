@@ -268,14 +268,14 @@ class SentenceDataset(Dataset):
             aspect_post_end = obj['aspect_post'][1]
     
             tokens_with_aspect = tokenizer(obj['text']+obj['aspect'], return_tensors='pt', padding=True, truncation=True, max_length=args.max_length)
-            # x = self.bert_model(**tokens_with_aspect).last_hidden_state
+            x = self.bert_model(**tokens_with_aspect).last_hidden_state
 
-            # if x.shape[1] < args.max_length:
-            #     padding_length = args.max_length - x.shape[1]
-            #     x = torch.nn.functional.pad(x, (0, 0, 0, padding_length))
-            # x = x.squeeze(0)
+            if x.shape[1] < args.max_length:
+                padding_length = args.max_length - x.shape[1]
+                x = torch.nn.functional.pad(x, (0, 0, 0, padding_length))
+            x = x.squeeze(0)
 
-            x = torch.rand(args.max_length, 768)
+            # x = torch.rand(args.max_length, 768)
             data.append({
                 'x':x,
                 'text': tokenized_text,

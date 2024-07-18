@@ -43,6 +43,7 @@ class VertexConv(nn.Module):
         self.projection=self.projection.to(self.args.device)
         # Compute attention scores for each node for each edge
         print(feature_mat.shape)
+        feature_mat = feature_mat.to(self.args.device)
         node_attention_scores = self.attention(feature_mat) # (m x out_feats)
 
         # Compute attention scores for each edge by aggregating node scores
@@ -84,7 +85,7 @@ class EdgeConv(nn.Module):
 
         self.attention = self.attention.to(self.args.device)
         self.projection=self.projection.to(self.args.device)
-
+        edge_features = edge_features.to(self.args.device)
         # Compute attention scores for each edge
         edge_attention_scores = self.attention(edge_features)  # (e x out_feats)
 
@@ -103,9 +104,10 @@ class EdgeConv(nn.Module):
 
         # Project aggregated node features to the output dimension
         node_features = self.projection(edge_features)  # (b x m x out_feats)
-
+        node_features = node_features.to(self.args.device)
         # If previous node features are provided, combine them with the new ones based on alpha
         if prev_node_features is not None:
+            prev_node_features = prev_node_features.to(self.args.device)
             print("Node:", node_features.shape)
             print("Previous Node:", prev_node_features.shape)
             node_features = self.alpha * prev_node_features + (1 - self.alpha) * node_features
@@ -132,6 +134,7 @@ class HypergraphEdgeAggregation(nn.Module):
 
         self.projection=self.projection.to(self.args.device)
         self.attention =self.attention.to(self.args.device)
+        edge_features =edge_features.to(self.args.device)
         # Compute attention scores for each edge
         attention_scores = self.attention(edge_features)  # (b x e x 1)
         attention_weights = F.softmax(attention_scores, dim=1)  # (b x e x 1)

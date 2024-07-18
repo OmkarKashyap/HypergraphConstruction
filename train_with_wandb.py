@@ -41,7 +41,6 @@ from scipy.stats import entropy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from proof import Proof1, verify_lemma_1
 
 wandb.require("core")
 wandb.login()
@@ -216,15 +215,12 @@ def train(model, train_dataloader, criterion, optimizer, scheduler, args, config
         x = prepare_input_data(batch, args, config)
         
         outputs = model(x)
-           
-        I_Hi, proof, lemma_result = verify_lemma_1(model, epoch, args, config, proof)
-        
-        # Log other relevant metrics if necessary
-        wandb.log({"epoch": epoch, "I_Hi": I_Hi ,"lemma_result": lemma_result})
         
         outputs = outputs.squeeze(0)
         
-        targets = batch['polarity'].to(device)
+        targets = batch['polarity']
+        targets = torch.tensor([t.item() for t in targets]).to(device)
+
         
         main_loss = criterion(outputs, targets)  
               
@@ -266,10 +262,15 @@ def train(model, train_dataloader, criterion, optimizer, scheduler, args, config
                 if isinstance(module, (nn.ReLU, nn.Tanh, nn.Sigmoid)):
                     activation_stats[name] = outputs.detach().cpu().numpy()
                     
-    # Compute gradient variance
-    all_gradients = np.stack(all_gradients)
-    grad_var = np.trace(np.cov(all_gradients.T))
-    wandb.log({'gradient_variance': grad_var, 'epoch': epoch})
+    # # Downsample gradients to a manageable size
+    # sampling_rate = 0.01  # Adjust this value as needed
+    # num_samples = int(len(all_gradients) * sampling_rate)
+    # sampled_gradients = np.random.choice(all_gradients, num_samples, replace=False)
+
+    # # Compute gradient variance
+    # sampled_gradients = np.stack(sampled_gradients)
+    # grad_var = np.trace(np.cov(sampled_gradients.T))
+    # wandb.log({'gradient_variance': grad_var, 'epoch': epoch})
 
     # Compute mutual information
     all_activations = np.concatenate(all_activations)
@@ -324,7 +325,9 @@ def evaluate(model, test_dataloader, criterion, args, config, show_results=False
             
             outputs = model(x)
             outputs = outputs.squeeze(0)
-            targets = batch['polarity'].to(device)
+            targets = batch['polarity']
+            targets = torch.tensor([t.item() for t in targets]).to(device)
+
             
             loss = criterion(outputs, targets)
             total_loss += loss.item()
@@ -412,13 +415,7 @@ def train_and_evaluate(config=None, ):
             
             # Performance vs. Model Size
             model_size = sum(p.numel() for p in model.parameters())
-            wandb.log({
-                'model_size_vs_performance': wandb.plot.scatter(
-                    "Model Size vs. Performance",
-                    {"model_size": model_size, "f1_score": max_f1}
-                ),
-                'epoch': epoch
-            })
+            wandb.log({"model_size": model_size, "f1_score": max_f1})
 
             # Convergence Speed
             if max_test_acc >= performance_threshold and not epochs_to_threshold:
@@ -431,33 +428,33 @@ def train_and_evaluate(config=None, ):
             wandb.log({'epoch_time': epoch_time, 'epoch': epoch})
         
             # Log eigenvalue spectrum
-            for name, param in model.named_parameters():
-                if 'weight' in name and param.dim() == 2:
-                    _, s, _ = torch.svd(param)
-                    wandb.log({f'eigenvalue_spectrum/{name}': wandb.Histogram(s.cpu().numpy()), 'epoch': epoch})
+            # for name, param in model.named_parameters():
+            #     if 'weight' in name and param.dim() == 2:
+            #         _, s, _ = torch.svd(param)
+            #         wandb.log({f'eigenvalue_spectrum/{name}': wandb.Histogram(s.cpu().numpy()), 'epoch': epoch})
 
-            # Log hypergraph structure metrics
-            hypergraph_metrics = calculate_hypergraph_metrics(model)  # You need to implement this function
-            wandb.log(hypergraph_metrics)
+            # # Log hypergraph structure metrics
+            # # hypergraph_metrics = calculate_hypergraph_metrics(model)  # You need to implement this function
+            # # wandb.log(hypergraph_metrics)
 
-            # Log attention weights (if applicable)
-            if hasattr(model, 'attention_weights'):
-                attention_weights = model.attention_weights.detach().cpu().numpy()
-                wandb.log({'attention_weights': wandb.Image(plt.imshow(attention_weights, cmap='viridis'))})
+            # # Log attention weights (if applicable)
+            # if hasattr(model, 'attention_weights'):
+            #     attention_weights = model.attention_weights.detach().cpu().numpy()
+            #     wandb.log({'attention_weights': wandb.Image(plt.imshow(attention_weights, cmap='viridis'))})
         
         # Computational Efficiency
         end_time = time.time()
         total_time = end_time - start_time
         
-        flops = calculate_flops(model, args, config)  
-        params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        # flops = calculate_flops(model, args, config)  
+        # params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         
-        wandb.log({
-            'computational_efficiency': wandb.plot.scatter(
-                "Performance vs. Computational Cost",
-                {"flops": flops, "time": total_time, "f1_score": max_f1, 'params': params}
-            )
-        })
+        # wandb.log({
+        #     'computational_efficiency': wandb.plot.scatter(
+        #         "Performance vs. Computational Cost",
+        #         {"flops": flops, "time": total_time, "f1_score": max_f1, 'params': params}
+        #     )
+        # })
 
         # Training Stability
         all_final_accuracies.append(max_test_acc)
@@ -692,7 +689,7 @@ def main():
             },
             'learning_rate': {'min': 1e-5, 'max': 1e-2},
             'batch_size': {
-                'values': [64]
+                'values': [24]
             },
             'dropout_rate': {
                 'values': [0.1, 0.2, 0.3]
@@ -768,7 +765,7 @@ def main():
     }
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cpu', help='Choose cuda if GPU present else cpu')
+    parser.add_argument('--device', type=str, default='cuda:0', help='Choose cuda if GPU present else cpu')
     parser.add_argument('--optimizer', type=str, default='adam', help='Choose the optimizer')
     parser.add_argument('--criterion', type=str, default='CrossEntropyLoss', help='Choose the criterion')
     parser.add_argument('--embedding_name', type=str, default='glove')

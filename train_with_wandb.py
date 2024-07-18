@@ -208,7 +208,7 @@ def train(model, train_dataloader, criterion, optimizer, scheduler, args, config
     all_gradients = []
     # For mutual information
     all_activations = []
-
+    
     for i_batch, batch in enumerate(tqdm(train_dataloader, desc=f"Epoch {epoch}")):
         step_counter += 1
         optimizer.zero_grad()
@@ -216,8 +216,11 @@ def train(model, train_dataloader, criterion, optimizer, scheduler, args, config
         x = prepare_input_data(batch, args, config)
         
         outputs = model(x)
-            
-        proof, lemma_result = verify_lemma_1(model, epoch, args, config, proof)
+           
+        I_Hi, proof, lemma_result = verify_lemma_1(model, epoch, args, config, proof)
+        
+        # Log other relevant metrics if necessary
+        wandb.log({"epoch": epoch, "I_Hi": I_Hi ,"lemma_result": lemma_result})
         
         outputs = outputs.squeeze(0)
         

@@ -2,7 +2,13 @@ import numpy as np
 import torch
 import math
 import scipy
-
+import scipy.sparse as sp
+import scipy.sparse.linalg as spla
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.decomposition import TruncatedSVD
+import torch
+import wandb
 class Proof1(object):
     def __init__(self, hypergraph, args, config):
         self.hypergraph = hypergraph
@@ -55,6 +61,7 @@ class Proof1(object):
         p_e_r = 1 / scipy.special.comb(seq_len, k)
         I_Hr = -np.log2(p_e_r) 
         return I_Hr
+    
 
 def verify_lemma_1(model, epoch, args, config, proof=None):
     """
@@ -94,6 +101,66 @@ def verify_lemma_1(model, epoch, args, config, proof=None):
         else:
             print("Warning: Lemma 1 does not hold for this batch")
         
-        return proof, lemma_holds
+        return I_Hi, proof, lemma_holds
     
     return proof, None
+
+
+class Proof2:
+    def __init__(self, hypergraph):
+        self.hypergraph = hypergraph
+    
+    def calculate_laplacian(self):
+        """
+        Calculate the Laplacian matrix of the hypergraph.
+        """
+        H = self.hypergraph.detach().cpu().numpy()
+        W = np.ones(H.shape[1])  # Assuming unweighted hypergraph
+        D_v = np.sum(H @ W, axis=1)
+        D_e = np.sum(H, axis=0)
+        D_v_inv = np.diag(1 / np.sqrt(D_v))
+        D_e_inv = np.diag(1 / D_e)
+        L = np.eye(H.shape[0]) - D_v_inv @ H @ D_e_inv @ H.T @ D_v_inv
+        return L
+
+    def calculate_lambda2(self, L):
+        """
+        Calculate the second smallest eigenvalue (λ₂) of the Laplacian matrix.
+        """
+        eigvals = spla.eigsh(sp.csr_matrix(L), k=2, which='SM', return_eigenvectors=False)
+        return eigvals[1]
+
+    def analyze_lambda2_changes(self, num_epochs):
+        """
+        Analyze how λ₂ changes during the learning process.
+        """
+        lambda2_values = []
+        for epoch in range(num_epochs):
+            self.train(self.model, self.train_dataloader, self.criterion, self.optimizer, self.args, self.config, None, epoch)
+            L = self.calculate_laplacian(self.model.hypergraph)
+            lambda2 = self.calculate_lambda2(L)
+            lambda2_values.append(lambda2)
+        
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(num_epochs), lambda2_values)
+        plt.xlabel('Epoch')
+        plt.ylabel('λ₂')
+        plt.title('Changes in λ₂ during learning process')
+        plt.savefig('lambda2_changes.png')
+        wandb.log({"lambda2_changes": wandb.Image('lambda2_changes.png')})
+
+    def investigate_lambda2_performance_relationship(self):
+        """
+        Investigate the relationship between λ₂ and model performance.
+        """
+        L = self.calculate_laplacian(self.model.hypergraph)
+        lambda2 = self.calculate_lambda2(L)
+        test_acc, test_loss, f1 = self.evaluate(self.model, self.test_dataloader, self.criterion, self.args, self.config)
+        
+        wandb.log({
+            "lambda2": lambda2,
+            "test_accuracy": test_acc,
+            "test_loss": test_loss,
+            "f1_score": f1
+        })
+

@@ -37,7 +37,21 @@ class Graph:
         if src not in self.edges:
             self.edges[src] = []
         self.edges[src].append((dst, attributes))
+
+# def graph_to_adj(self, graph):
+#     batch_size = self.args.batch_size
+#     max_length = self.args.max_length
+    
+#     # adj_matrices = torch.full((batch_size, max_length, max_length), -1.0)
+#     adj_matrices = torch.zeros((max_length, max_length))
+    
+#     for i in range(batch_size):
         
+#         for edge in graph.graph.edges:
+#             src, dest = edge
+#             adj_matrices[src, dest] = 1.0
+    
+#     return adj_matrices
 class DependencyGraph(nn.Module):
     def __init__(self, args):
         super(DependencyGraph, self).__init__()
@@ -100,21 +114,6 @@ class DependencyGraph(nn.Module):
             adj_matrix[src_idx, dest_idx] = 1.0
 
         return adj_matrix
-    
-    # def graph_to_adj(self, graph):
-    #     batch_size = self.args.batch_size
-    #     max_length = self.args.max_length
-        
-    #     # adj_matrices = torch.full((batch_size, max_length, max_length), -1.0)
-    #     adj_matrices = torch.zeros((max_length, max_length))
-        
-    #     for i in range(batch_size):
-            
-    #         for edge in graph.graph.edges:
-    #             src, dest = edge
-    #             adj_matrices[src, dest] = 1.0
-        
-    #     return adj_matrices
     
 
 class GNNLayer(nn.Module):

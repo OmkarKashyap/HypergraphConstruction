@@ -408,6 +408,10 @@ from torch.utils.data import Dataset
 from models.layers import HGConstruct
 
 
+
+import nltk
+nltk.download('punkt')  # Example of downloading the 'punkt' tokenizer models
+nltk.download('stopwords')
 from nltk.corpus import stopwords
 import string
 import torch
@@ -569,6 +573,7 @@ class Tokenizer(object):
         #     text = text.replace(ch, " "+ch+" ")
         return text.strip().split()
 
+
 class SentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
     def __init__(self, fname, tokenizer, args, config, vocab_help, embedding_matrix, save_path):
@@ -585,6 +590,7 @@ class SentenceDataset(Dataset):
         
         self.construct = HGConstruct(args, config)
         self.embedding = nn.Embedding.from_pretrained(embedding_matrix, freeze=True, padding_idx=0)
+        # self.lstm = nn.LSTM(args.dim_in, args.hidden_dim, bidirectional=True, batch_first=True)
         parse = ParseData
         post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab = vocab_help
         data = list()
@@ -601,16 +607,25 @@ class SentenceDataset(Dataset):
             updated_token_ids = tokenizer.pad_sequence(updated_token_ids, pad_id=0, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
             text_tensor = torch.as_tensor(updated_token_ids, dtype=torch.int64)
             
+            aspect = tokenizer.text_to_sequence(obj['aspect'])  
+            # aspect = tokenizer.pad_sequence(aspect, pad_id=0, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
+            # aspect_temp = [0 if x == -1 else x for x in aspect]
+            aspect_temp = aspect[aspect != -1]
+
+            aspect_tensor = torch.as_tensor(aspect_temp, dtype=torch.int64)
+            aspect_emb = self.embedding(aspect_tensor).float()
+            aspect_emb = aspect_emb.mean(dim=0, keepdim=True)
+
             x = self.embedding(text_tensor)
             if not inc_exists:
-                incidence_matrix = self.construct.cluster(x)
+                if config.model == 'dbscan':
+                    incidence_matrix = self.construct.dim_cluster(x)
+                elif config.model == 'hier':
+                    incidence_matrix = self.construct.hier_cluster(x)
                 self.incidences.append(incidence_matrix)
-                i += 1
+                
             text = tokenizer.pad_sequence(text, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
 
-            aspect = tokenizer.text_to_sequence(obj['aspect'])  
-            aspect = tokenizer.pad_sequence(aspect, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
-            
             pos = [pos_vocab.stoi.get(t, pos_vocab.unk_index) for t in obj['pos']]
             pos = tokenizer.pad_sequence(pos, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
             
@@ -635,7 +650,6 @@ class SentenceDataset(Dataset):
             
             adj = np.ones(args.max_length) * args.pad_id
             
-            
             data.append({
                 'text': text, 
                 'aspect': aspect, 
@@ -653,7 +667,9 @@ class SentenceDataset(Dataset):
                 'plain_text': plain_text,
                 'text_list': text_list,
                 'incidence_matrix': incidence_matrix if not inc_exists else self.incidences[i],
+                'aspect_emb' : aspect_emb,
             })
+            i += 1
             
         if not inc_exists:
             with open(save_path, 'wb') as f:

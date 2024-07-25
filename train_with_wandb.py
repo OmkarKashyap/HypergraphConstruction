@@ -63,6 +63,8 @@ def custom_collate(batch):
     word_mask_batch = [torch.as_tensor(item['word_mask'], dtype=torch.int64).to(device) for item in batch]
     aspect_post_start_batch = [torch.as_tensor(item['aspect_post_start'], dtype=torch.int64).to(device) for item in batch]
     aspect_post_end_batch = [torch.as_tensor(item['aspect_post_end'], dtype=torch.int64).to(device) for item in batch]
+    aspect_emb = [torch.as_tensor(item['aspect_emb'], dtype=torch.int64).to(device) for item in batch]
+    aspect_emb = torch.stack(aspect_emb)
     plain_text_batch = [item['plain_text'] for item in batch]
     text_list_batch = [item['text_list'] for item in batch]
 
@@ -91,7 +93,8 @@ def custom_collate(batch):
         'aspect_post_end': aspect_post_end_batch,
         'plain_text': plain_text_batch,
         'text_list': text_list_batch,
-        'incidence_matrix': padded_tensors
+        'incidence_matrix': padded_tensors,
+        'aspect_emb' : aspect_emb
     }
 
 def save_model(model, path, optimizer, gpus, args, updates=None):
@@ -106,6 +109,8 @@ def save_model(model, path, optimizer, gpus, args, updates=None):
 def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch, max_test_acc_overall=0, max_f1 = 0, max_test_acc = 0,step_counter = 0 ):
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+    if not torch.cuda.is_available():
+        args.device = 'cpu'
     model.train()
     n_correct, n_total = 0, 0
     epoch_train_loss = 0
@@ -148,8 +153,8 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
         targets = torch.tensor([t.item() for t in targets]).to(device)
 
         optimizer.zero_grad()
-        outputs = model(x_complete, batch['incidence_matrix'])
-        outputs = outputs.squeeze(0)
+        outputs = model(x_complete, batch['incidence_matrix'], batch['aspect_emb'])
+
         loss = criterion(outputs, targets)
 
         loss.backward()
@@ -161,6 +166,8 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
 
         if step_counter % args.log_step == 0:
             test_acc, test_loss, f1 = evaluate(model, test_dataloader, criterion, args, embedding_matrix)
+            model.train()
+            
             if test_acc > max_test_acc:
                 max_test_acc = test_acc
                 if test_acc > max_test_acc_overall:
@@ -170,8 +177,6 @@ def train(model, train_dataloader, criterion, optimizer, args, test_dataloader, 
 
             if f1 > max_f1:
                 max_f1 = f1
-
-            
 
             logger.info('loss: {:.4f}, acc: {:.4f}, test_loss: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(
                 loss.item(), n_correct / n_total, test_loss, test_acc, f1))
@@ -239,7 +244,7 @@ def evaluate(model, test_dataloader, criterion, args, embedding_matrix, show_res
             targets = batch['polarity']
             targets = torch.tensor([t.item() for t in targets]).to(device)
 
-            outputs = model(x_complete, batch['incidence_matrix'])
+            outputs = model(x_complete, batch['incidence_matrix'], batch['aspect_emb'])
             outputs = outputs.squeeze(0)
 
             loss = criterion(outputs, targets)
@@ -290,8 +295,8 @@ def train_and_evaluate(config=None):
         args.vocab_size = len(token_vocab) + len(post_vocab) + len(pos_vocab) + len(dep_vocab) + len(pol_vocab) + len(head_vocab)
         vocab_help = (post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab)
 
-        trainset = SentenceDataset(args.dataset_file['train'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/train_{config.eps}_{config.min_samples}.pkl')
-        testset = SentenceDataset(args.dataset_file['test'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/test_{config.eps}_{config.min_samples}.pkl')
+        trainset = SentenceDataset(args.dataset_file['train'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/{config.silhouette_threshold}_{config.model}_train.pkl')
+        testset = SentenceDataset(args.dataset_file['test'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/{config.silhouette_threshold}_{config.model}_test.pkl')
         train_dataloader = DataLoader(dataset=trainset, batch_size=config.batch_size, shuffle=True, collate_fn=custom_collate)
         test_dataloader = DataLoader(dataset=testset, batch_size=config.batch_size, collate_fn=custom_collate)
 
@@ -307,7 +312,7 @@ def train_and_evaluate(config=None):
 
         for epoch in tqdm(range(config.epochs)):
             max_test_acc, max_f1, model_path = train(model, train_dataloader, criterion, optimizer, args, test_dataloader, embedding_matrix, epoch)
-            wandb.log({'f1_score': max_f1})
+            wandb.log({'f1_score': max_f1, 'test_acc' : max_test_acc})
 
         return max_test_acc, max_f1
 
@@ -323,41 +328,44 @@ def test(model, test_dataloader, args, embedding_matrix):
 def main():
     # wandb.init(project='HCNSCAN-trial', name='training-example')  # Initialize wandb
     sweep_config = {
-        'method': 'bayes',
+        'method': 'grid',
         'parameters': {
             'optim' : {
-                'values' : ['adagrad', 'adamw', 'rmsprop']
+                'values' : ['rmsprop']
             },
             'epochs' : {
-                'values' : [30, 40]
+                'values' : [60]
             },
             'learning_rate': {
-                'values': [ 0.001, 0.0001]
+                'values': [ 0.001]
             },
             'batch_size': {
-                'values': [64]
+                'values': [16]
             },
             'dropout_rate': {
-                'values': [0.3, 0.4 ]
+                'values': [0.3, 0.4]
             },
             'min_samples': {
-                'values' : [3, 4, 5]
-            },
-            'eps' : {
-                'values' : [0.001, 0.01 , 0.05, 0.1]
+                'values' : [4]
             },
             'top_k':{
-                'values' : [2,3,4]
+                'values' : [4]
             },
             'num_topics' : {
-                'values' : [30, 40, 50]
+                'values' : [40]
             },
-            'n_layers' : {
-                'values' : [2, 3]
+            'seq' : {
+                'values' : [True, False]
+            },
+            'silhouette_threshold' : {
+                'values' : [0.6, 0.7, 0.8]
             },
             'gnn_aggregation_type' : {
                 'values' : ['sum', 'mean']
             },
+            'model' : {
+                'values' : ['dbscan', 'lda', 'dephg', 'all', 'hier']
+            }
             
             
         },
@@ -367,7 +375,7 @@ def main():
         }
     }
 
-    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-final")
+    sweep_id = wandb.sweep(sweep_config, project="HCNSCAN-amit")
     
     dataset_files = {
         'restaurant': {
@@ -399,10 +407,12 @@ def main():
     parser.add_argument('--embed_dim', default=300, type=int)
     parser.add_argument('--pad_id', default=-1, type=int)
     parser.add_argument('--batch_size', default=8, type=int)
-    parser.add_argument('--num_epoch', default=20, type=int)
+    parser.add_argument('--num_epoch', default=60, type=int)
+    parser.add_argument('--num_heads', default=5, type=int)
     parser.add_argument('--log_step', default=5, type=int, help='Logs state after set number of epochs')
     parser.add_argument('--learning_rate', default=0.001, type=float)
     parser.add_argument('--n_layers', default=2)
+    parser.add_argument('--dim_feedforward', default=150)
     parser.add_argument('--dropout_rate', default=0.3)
     parser.add_argument('--eps', default=0.01)
     parser.add_argument('--min_samples', default=3)

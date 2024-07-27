@@ -1,6 +1,6 @@
-/venv
-/glove
+venv/
+glove/
 train.pkl
 test.pkl
-/wandb
-/dataset
+wandb/
+dataset/

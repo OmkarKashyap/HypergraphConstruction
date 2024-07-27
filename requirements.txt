@@ -5,3 +5,7 @@ transformers
 scikit-learn
 hypernetx
 igraph
+gensim
+wandb
+community
+python-louvain

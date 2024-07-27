@@ -290,8 +290,8 @@ def train_and_evaluate(config=None):
         args.vocab_size = len(token_vocab) + len(post_vocab) + len(pos_vocab) + len(dep_vocab) + len(pol_vocab) + len(head_vocab)
         vocab_help = (post_vocab, pos_vocab, dep_vocab, pol_vocab, head_vocab)
 
-        trainset = SentenceDataset(args.dataset_file['train'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/train_{config.eps}_{config.min_samples}.pkl')
-        testset = SentenceDataset(args.dataset_file['test'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/test_{config.eps}_{config.min_samples}.pkl')
+        trainset = SentenceDataset(args.dataset_file['train'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/train_{config.silhouette_threshold}.pkl')
+        testset = SentenceDataset(args.dataset_file['test'], tokenizer, args, config, vocab_help, embedding_matrix, f'pickled_datasets/test_{config.silhouette_threshold}.pkl')
         train_dataloader = DataLoader(dataset=trainset, batch_size=config.batch_size, shuffle=True, collate_fn=custom_collate)
         test_dataloader = DataLoader(dataset=testset, batch_size=config.batch_size, collate_fn=custom_collate)
 
@@ -323,41 +323,41 @@ def test(model, test_dataloader, args, embedding_matrix):
 def main():
     # wandb.init(project='HCNSCAN-trial', name='training-example')  # Initialize wandb
     sweep_config = {
-        'method': 'bayes',
+        'method': 'grid',
         'parameters': {
             'optim' : {
-                'values' : ['adagrad', 'adamw', 'rmsprop']
+                'values' : ['rmsprop']
             },
             'epochs' : {
-                'values' : [30, 40]
+                'values' : [40, 60]
             },
             'learning_rate': {
-                'values': [ 0.001, 0.0001]
+                'values': [0.0001, 0.00005]
             },
             'batch_size': {
                 'values': [64]
             },
             'dropout_rate': {
-                'values': [0.3, 0.4 ]
+                'values': [0.3]
             },
             'min_samples': {
-                'values' : [3, 4, 5]
-            },
-            'eps' : {
-                'values' : [0.001, 0.01 , 0.05, 0.1]
+                'values' : [4]
             },
             'top_k':{
-                'values' : [2,3,4]
+                'values' : [3,4]
             },
             'num_topics' : {
-                'values' : [30, 40, 50]
+                'values' : [40]
             },
             'n_layers' : {
-                'values' : [2, 3]
+                'values' : [3]
             },
             'gnn_aggregation_type' : {
-                'values' : ['sum', 'mean']
+                'values' : ['sum']
             },
+            'silhouette_threshold' : {
+                'values' : [0.6, 0.7, 0.8]
+            }
             
             
         },

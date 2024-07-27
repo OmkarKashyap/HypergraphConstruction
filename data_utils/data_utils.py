@@ -605,7 +605,7 @@ class SentenceDataset(Dataset):
             if not inc_exists:
                 incidence_matrix = self.construct.cluster(x)
                 self.incidences.append(incidence_matrix)
-                i += 1
+
             text = tokenizer.pad_sequence(text, pad_id=args.pad_id, maxlen=args.max_length, dtype='int64', padding='post', truncating='post')
 
             aspect = tokenizer.text_to_sequence(obj['aspect'])  
@@ -654,7 +654,7 @@ class SentenceDataset(Dataset):
                 'text_list': text_list,
                 'incidence_matrix': incidence_matrix if not inc_exists else self.incidences[i],
             })
-            
+            i += 1
         if not inc_exists:
             with open(save_path, 'wb') as f:
                 pickle.dump(self.incidences, f)

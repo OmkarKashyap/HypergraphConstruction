@@ -6,18 +6,28 @@ from torch import nn
 import torch.nn.functional as F
 from models.omk_dep_hg.dep_hg import DependencyHG
 from models.lda_hypergraph import SemanticHypergraphModel
+from sklearn.metrics import silhouette_score
+from sklearn.neighbors import NearestNeighbors
 
 class HGConstruct(nn.Module):
     def __init__(self,args, config) -> None:
         super(HGConstruct, self). __init__()
         self.args=args
-        self.eps = config.eps
         self.min_samples = config.min_samples
         self.clusters = None
         self.dep = DependencyHG(args, config)
         self.lda = SemanticHypergraphModel(args, config)
+        self.silhouette_threshold = config.silhouette_threshold
         # self.attention_context_vector = nn.Parameter(torch.empty(self.output_size))
 
+
+    def adaptive_eps(self, X, min_eps=1e-4):
+        if isinstance(X, torch.Tensor):
+            X = X.detach().numpy()
+        nbrs = NearestNeighbors(n_neighbors=self.min_samples).fit(X)
+        distances, _ = nbrs.kneighbors(X)
+        eps = np.percentile(distances[:, -1], 90)
+        return max(eps, min_eps)
 
     def make_incidence_matrix(self, hyperedges, n, nc):
         '''
@@ -42,7 +52,7 @@ class HGConstruct(nn.Module):
         :param ids: indices selected during train/valid/test, torch.LongTensor.
         :param features: assumed it is a tensor. (N, k, d)
         '''
-        print(features.shape)
+        # print(features.shape)
         num_nodes = features.size()[0]
         dim_len = features.size()[1]
         num_clusters = 0
@@ -52,18 +62,30 @@ class HGConstruct(nn.Module):
             # print(features.squeeze(0)[:,dim].reshape(-1, 1).shape)\
             # reshaped_tensor = features.view(85, 1)
             # print(reshaped_tensor.shape)
-            current_dim_emb = features.squeeze(0)[:,dim].reshape(-1, 1)
-            db = DBSCAN(eps=self.eps, min_samples=self.min_samples)
+            dim_clusters = []
+            current_dim_emb = features.squeeze(0)[:,dim].reshape(-1, 1).detach()
+            # print(current_dim_emb.shape)
+            eps = self.adaptive_eps(current_dim_emb)
+            # print(eps)
+            db = DBSCAN(eps=eps, min_samples=self.min_samples)
             labels = db.fit_predict(current_dim_emb)
             unique_labels = set(labels)
             if -1 in unique_labels:
                 unique_labels.remove(-1)
-            clusters_now = len(unique_labels)
-            dim_clusters = [np.where(labels == label)[0].tolist() for label in unique_labels]
-            num_clusters += clusters_now
-            if dim_clusters:
-                hyperedges.extend(dim_clusters)
-    
+            
+            if len(unique_labels) > 1:
+                silhouette_avg = silhouette_score(current_dim_emb, labels)
+                # print("Silhouette Average:", silhouette_avg)
+                if silhouette_avg >= self.silhouette_threshold:
+                    dim_clusters = [np.where(labels == label)[0].tolist() for label in unique_labels]
+                    
+                if dim_clusters:
+                    num_clusters += len(dim_clusters)
+                    hyperedges.extend(dim_clusters)
+                
+        print("num_clusters", num_clusters)
+        if not num_clusters:
+            return torch.Tensor()
         incidence_matrix = self.make_incidence_matrix(hyperedges, num_nodes, num_clusters)
     # batch_incidence_matrix = torch.stack(batch_incidence_matrix)
         return incidence_matrix
